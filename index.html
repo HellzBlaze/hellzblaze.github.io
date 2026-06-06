@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>REat - V1.0</title>
+    <title>REat - V1.1</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
@@ -170,9 +170,9 @@
 </head>
 <body>
 
-    <!-- CUSTOMER HUB (REat V1.0) -->
+    <!-- CUSTOMER HUB (REat V1.1) -->
     <div id="customer-hub" class="screen-overlay">
-        <h1 style="font-size: 4rem; font-weight: 800; letter-spacing: -2px; margin-bottom: 5px;">REat <span style="color:var(--primary); font-size: 1.5rem; vertical-align: middle;">V1.0</span></h1>
+        <h1 style="font-size: 4rem; font-weight: 800; letter-spacing: -2px; margin-bottom: 5px;">REat <span style="color:var(--primary); font-size: 1.5rem; vertical-align: middle;">V1.1</span></h1>
         <p style="color: var(--text-dim); font-size: 1.1rem; max-width: 400px; margin-bottom: 20px;">Premium Local Ordering</p>
         
         <div class="hub-search-box">
@@ -218,7 +218,6 @@
                     <button class="toggle-btn active" id="btnTakeaway" onclick="setOrderType('Takeaway')">Takeaway</button>
                     <button class="toggle-btn" id="btnDineIn" onclick="setOrderType('Dine-in')">Dine-in</button>
                 </div>
-                <input type="text" id="custTableInput" style="display:none; background:var(--bg-deep); border:1px solid var(--border); color:white; padding:12px; border-radius:10px; margin-bottom:15px;" placeholder="Enter Table Number">
                 
                 <div class="cart-items-container" id="custCartList" style="min-height: 150px;"></div>
                 
@@ -257,7 +256,7 @@
                     <span class="header-status"><span class="lan-indicator offline" id="lanDot"></span>Net ID: <b id="myPeerId" style="color:var(--primary); font-size: 1.05rem;">...</b></span>
                     <div style="display:flex; align-items:center; gap:10px; background:var(--bg-deep); padding: 8px 16px; border-radius: 14px; border:1px solid var(--border);"><span style="font-size:0.8rem; font-weight:700; color:var(--text-dim);">STORE ONLINE</span><input type="checkbox" class="master-switch" id="storeOnlineSwitch" onchange="toggleStoreOnline()"></div>
                 </div>
-                <h1>REat V1.0</h1>
+                <h1>REat V1.1</h1>
                 <div style="width: 320px; text-align: right; display: flex; justify-content: flex-end; gap: 12px; align-items: center;"><span class="header-status" id="headerCashierLabel" onclick="promptRegisterUnlock()" style="background: var(--primary); border:none; color:white; box-shadow: 0 4px 15px var(--primary-glow);">Cashier: Sign In ✎</span></div>
             </header>
 
@@ -280,7 +279,6 @@
                             <button class="toggle-btn active" id="posBtnTakeaway" onclick="setPosOrderType('Takeaway')">Takeaway</button>
                             <button class="toggle-btn" id="posBtnDineIn" onclick="setPosOrderType('Dine-in')">Dine-in</button>
                         </div>
-                        <input type="text" id="posTableInput" style="display:none; background:var(--bg-deep); border:1px solid var(--border); color:white; padding:12px; border-radius:10px; margin-bottom:10px;" placeholder="Table Number">
                         <div class="cart-items-container" id="cartItemsList"></div>
                         <div class="cart-totals">
                             <div class="total-row"><span>Cart Subtotal</span><span>₹<span id="cartSubtotal">0</span></span></div>
@@ -388,7 +386,7 @@
     <div id="modalContainer" class="modal-overlay"></div>
 
     <script>
-        // --- SMART ROUTER REat V1.0 ---
+        // --- SMART ROUTER REat V1.1 ---
         let isStoreRoute = false;
         
         document.addEventListener('DOMContentLoaded', () => {
@@ -422,7 +420,6 @@
         let currentPosCategory = 'All';
         let posOrderMode = 'Takeaway';
 
-        // Base directory for fallback scanning
         const storeDirectory = [
             { id: "reat-store-hellzblaze-test", name: "HellzBlaze Test Store" },
             { id: "reat-store-my-restaurant", name: "My Restaurant" },
@@ -544,6 +541,24 @@
             });
         }
 
+        // V1.1: Added Manual Override Logic
+        function toggleManualStatus() {
+            if (confirm("Force change connection status? (Main Terminal ↔ Side Terminal)")) {
+                if (isMainTerminal) {
+                    isMainTerminal = false;
+                    if (peer) peer.destroy();
+                    peer = new Peer();
+                    alert("Switched to Side Terminal mode.");
+                } else {
+                    isMainTerminal = true;
+                    if (peer) peer.destroy();
+                    initStoreNetwork();
+                    alert("Switched to Main Terminal mode.");
+                }
+                renderAll();
+            }
+        }
+
         function forceRebootAsMain() {
             if(confirm("Disconnect from current network and reboot this device as a Main Terminal?")) {
                 isMainTerminal = true;
@@ -571,7 +586,7 @@
             if(isStoreRoute) renderAll(); 
         }
 
-        // --- CUSTOMER HUB LOGIC (FIXED SCANNER) ---
+        // --- CUSTOMER HUB LOGIC ---
         let custCart = [];
         let custOrderMode = 'Takeaway';
         let custMenuData = { menu: [], cats: [], tops: [], storeName: "" };
@@ -587,14 +602,12 @@
             if(!grid) return;
             let onlineHTML = ''; let checkedCount = 0;
             
-            // Build dynamic list including any recently configured local store names
             let localDir = [...storeDirectory];
             
             localDir.forEach(store => {
                 let pingConn = peer.connect(store.id);
                 let isDone = false;
                 
-                // Shortened timeout for fast failing of offline stores
                 let pingTimeout = setTimeout(() => { 
                     if(!isDone) { isDone = true; pingConn.close(); checkDone(); } 
                 }, 1800);
@@ -610,7 +623,6 @@
                     }
                 });
 
-                // Immediately catch errors (like peer-unavailable) to prevent hang
                 pingConn.on('error', () => { if(!isDone) { isDone = true; clearTimeout(pingTimeout); checkDone(); } });
 
                 function checkDone() { 
@@ -653,7 +665,7 @@
                             <p style="margin:10px 0 0 0; font-size:0.95rem;">Please present this number when collecting your order.</p>
                         </div>
                     `;
-                    toggleMobileCart(); // close cart if on mobile to see confirmation
+                    toggleMobileCart(); 
                 }
             });
             activeConnection.on('error', () => { triggerDisconnectFail(); });
@@ -672,15 +684,12 @@
         function setOrderType(type) {
             custOrderMode = type;
             document.getElementById('btnTakeaway').classList.remove('active'); document.getElementById('btnDineIn').classList.remove('active');
-            if(type === 'Takeaway') { document.getElementById('btnTakeaway').classList.add('active'); document.getElementById('custTableInput').style.display = 'none'; } 
-            else { document.getElementById('btnDineIn').classList.add('active'); document.getElementById('custTableInput').style.display = 'block'; }
+            if(type === 'Takeaway') { document.getElementById('btnTakeaway').classList.add('active'); } 
+            else { document.getElementById('btnDineIn').classList.add('active'); }
         }
 
-        function toggleMobileCart() {
-            document.getElementById('custCartPanelObj').classList.toggle('active');
-        }
+        function toggleMobileCart() { document.getElementById('custCartPanelObj').classList.toggle('active'); }
 
-        // UPGRADED UI RENDERER
         function renderCustomerView() {
             let html = '';
             custMenuData.cats.forEach(cat => {
@@ -734,11 +743,8 @@
 
         function submitCustomerOrder() {
             if(!custCart.length) return alert("Your cart is empty!");
-            let tableNo = document.getElementById('custTableInput').value.trim();
-            if(custOrderMode === 'Dine-in' && !tableNo) return alert("Please enter your Table Number.");
-
             const orderTotal = custCart.reduce((a,b)=>a+b.totalPrice,0), totalC = custCart.reduce((a,b)=>a+b.totalCost,0);
-            const orderPayload = { timestamp: Date.now(), items: [...custCart], subtotal: orderTotal, totalCost: totalC, tip: 0, total: orderTotal, status: 'Pending', cashier: 'Customer App', orderType: custOrderMode, tableNumber: tableNo || 'N/A' };
+            const orderPayload = { timestamp: Date.now(), items: [...custCart], subtotal: orderTotal, totalCost: totalC, tip: 0, total: orderTotal, status: 'Pending', cashier: 'Customer App', orderType: custOrderMode, tableNumber: 'N/A' };
 
             if(activeConnection && activeConnection.open) {
                 activeConnection.send({ type: 'NEW_ORDER', order: orderPayload });
@@ -762,8 +768,8 @@
 
         function setPosOrderType(type) {
             posOrderMode = type; document.getElementById('posBtnTakeaway').classList.remove('active'); document.getElementById('posBtnDineIn').classList.remove('active');
-            if(type === 'Takeaway') { document.getElementById('posBtnTakeaway').classList.add('active'); document.getElementById('posTableInput').style.display = 'none'; } 
-            else { document.getElementById('posBtnDineIn').classList.add('active'); document.getElementById('posTableInput').style.display = 'block'; }
+            if(type === 'Takeaway') { document.getElementById('posBtnTakeaway').classList.add('active'); } 
+            else { document.getElementById('posBtnDineIn').classList.add('active'); }
         }
 
         function openModal(html) { const c = document.getElementById('modalContainer'); c.innerHTML = html; c.classList.add('active'); }
@@ -810,11 +816,9 @@
 
         function submitPosOrder() {
             if(!currentCart.length) return alert("Queue empty.");
-            let tableNo = document.getElementById('posTableInput').value.trim();
-            if(posOrderMode === 'Dine-in' && !tableNo) return alert("Enter Table Number for Dine-in orders.");
             state.orderCounter++;
             
-            state.orders.push({ internalId: Date.now(), id: state.orderCounter, timestamp: Date.now(), items: [...currentCart], subtotal: currentCart.reduce((a,b)=>a+b.totalPrice,0), totalCost: currentCart.reduce((a,b)=>a+b.totalCost,0), tip: parseFloat(document.getElementById('cartTip').value)||0, total: currentCart.reduce((a,b)=>a+b.totalPrice,0)+(parseFloat(document.getElementById('cartTip').value)||0), status: 'Pending', cashier: state.activeCashier, orderType: posOrderMode, tableNumber: tableNo || 'N/A' });
+            state.orders.push({ internalId: Date.now(), id: state.orderCounter, timestamp: Date.now(), items: [...currentCart], subtotal: currentCart.reduce((a,b)=>a+b.totalPrice,0), totalCost: currentCart.reduce((a,b)=>a+b.totalCost,0), tip: parseFloat(document.getElementById('cartTip').value)||0, total: currentCart.reduce((a,b)=>a+b.totalPrice,0)+(parseFloat(document.getElementById('cartTip').value)||0), status: 'Pending', cashier: state.activeCashier, orderType: posOrderMode, tableNumber: 'N/A' });
             currentCart = []; document.getElementById('cartTip').value = '0'; document.getElementById('cartCashGiven').value = '0'; document.getElementById('cartChangeDue').innerText = '0.00';
             broadcastState(); updateCartUI();
         }
@@ -891,16 +895,19 @@
         function renderAll() {
             if(!document.getElementById('headerCashierLabel')) return;
 
-            // SYNC UI RENDERER
             let syncHtml = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;"><h3 style="margin:0;">Device Synchronization</h3></div>
             <div style="display:flex; gap:24px; align-items:center; margin-bottom:24px; background:var(--bg-deep); padding:20px; border-radius:16px; border:1px solid var(--border);">
-                <div><span style="color:var(--text-dim); font-size:0.85rem; font-weight:700; text-transform:uppercase;">Network Sync Code</span><div style="font-size:2rem; font-weight:800; color:var(--primary); letter-spacing:4px; line-height:1.2;">${state.syncCode}</div></div>
+                <div><span style="color:var(--text-dim); font-size:0.85rem; font-weight:700; text-transform:uppercase;">Sync Code</span><div style="font-size:2rem; font-weight:800; color:var(--primary);">${state.syncCode}</div></div>
                 <div style="width:1px; height:40px; background:var(--border);"></div>
-                <div><span style="color:var(--text-dim); font-size:0.85rem; font-weight:700; text-transform:uppercase;">System Status</span><div style="font-size:1.1rem; font-weight:800; color:${isMainTerminal ? 'var(--success)' : 'var(--warning)'}; margin-top:4px;">${isMainTerminal ? 'MAIN TERMINAL' : 'SIDE TERMINAL'}</div></div>
+                <div><span style="color:var(--text-dim); font-size:0.85rem; font-weight:700; text-transform:uppercase;">Status</span><div style="font-size:1.1rem; font-weight:800; color:${isMainTerminal ? 'var(--success)' : 'var(--warning)'};">${isMainTerminal ? 'MAIN' : 'SIDE'}</div></div>
+            </div>
+            
+            <div style="margin-top:20px; display:flex; gap:10px;">
+                <button class="btn-status" style="background:var(--accent); width:100%;" onclick="toggleManualStatus()">Force Manual Status Toggle</button>
             </div>`;
 
             if(isMainTerminal) {
-                syncHtml += `<h4 style="margin-bottom:12px; color:var(--text-dim);">Connected Side Terminals (${connectedSideTerminals.length})</h4>`;
+                syncHtml += `<h4 style="margin-top:24px; margin-bottom:12px; color:var(--text-dim);">Connected Side Terminals (${connectedSideTerminals.length})</h4>`;
                 if(connectedSideTerminals.length === 0) syncHtml += `<p style="color:var(--text-dim); font-size:0.95rem; font-style:italic;">No secondary devices are currently synced to this terminal.</p>`;
                 connectedSideTerminals.forEach(conn => {
                     syncHtml += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-deep); padding:16px; border-radius:12px; margin-bottom:10px; border:1px solid var(--border);">
@@ -916,7 +923,7 @@
                     </div>
                 </div>`;
             } else {
-                syncHtml += `<h4 style="margin-bottom:12px; color:var(--text-dim);">Connected to Main Terminal</h4>`;
+                syncHtml += `<h4 style="margin-top:24px; margin-bottom:12px; color:var(--text-dim);">Connected to Main Terminal</h4>`;
                 syncHtml += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-deep); padding:16px; border-radius:12px; border:1px solid var(--border);">
                     <span style="font-family:monospace; font-size:1rem; color:var(--success); font-weight:bold;">${mainConnection ? mainConnection.peer : 'Connecting...'}</span>
                 </div>`;
@@ -956,9 +963,9 @@
             state.orders.forEach(o => {
                 const conf = {'Pending':{n:'Received',b:'Accept',c:'var(--warning)'}, 'Received':{n:'Preparing',b:'Start',c:'var(--primary)'}, 'Preparing':{n:'Prepared',b:'Ready',c:'var(--primary)'}, 'Prepared':{n:'Collected',b:'Archive',c:'var(--success)'}}[o.status];
                 if(conf) {
-                    const html = `<div class="order-card" style="border-left-color:${conf.c}"><div class="card-header"><span style="font-weight:800; font-size:1.3rem;">#${o.id}</span><span class="status-pill" style="color:${conf.c}; background:rgba(0,0,0,0.2); border-color:${conf.c};">${o.status}</span></div><div style="font-size:0.85rem; color:var(--text-dim); margin-bottom:5px; font-weight:600;">Type: ${o.orderType || 'Takeaway'} ${o.tableNumber && o.tableNumber !== 'N/A' ? `| Table: ${o.tableNumber}` : ''}</div><div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:12px;">🕒 Sent at: ${formatTime(o.timestamp)}</div><div style="margin: 16px 0;">${o.items.map(i=>`<div class="order-item-row"><b style="color:var(--text-main); font-size:1.05rem;">${i.qty}x</b> ${i.name}${i.toppings.length ? `<br><small style="color:var(--warning); font-weight:600;">+ ${i.toppings.join(', ')}</small>` : ''}</div>`).join('')}</div><div class="card-actions">${conf.n?`<button class="btn-status" onclick="updateOrderStatus(${o.internalId || o.id}, '${conf.n}')">${conf.b}</button>`:''}<button class="btn-cancel" onclick="updateOrderStatus(${o.internalId || o.id}, 'Cancelled')">Void</button></div></div>`;
+                    const html = `<div class="order-card" style="border-left-color:${conf.c}"><div class="card-header"><span style="font-weight:800; font-size:1.3rem;">#${o.id}</span><span class="status-pill" style="color:${conf.c}; background:rgba(0,0,0,0.2); border-color:${conf.c};">${o.status}</span></div><div style="font-size:0.85rem; color:var(--text-dim); margin-bottom:5px; font-weight:600;">Type: ${o.orderType || 'Takeaway'}</div><div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:12px;">🕒 Sent at: ${formatTime(o.timestamp)}</div><div style="margin: 16px 0;">${o.items.map(i=>`<div class="order-item-row"><b style="color:var(--text-main); font-size:1.05rem;">${i.qty}x</b> ${i.name}${i.toppings.length ? `<br><small style="color:var(--warning); font-weight:600;">+ ${i.toppings.join(', ')}</small>` : ''}</div>`).join('')}</div><div class="card-actions">${conf.n?`<button class="btn-status" onclick="updateOrderStatus(${o.internalId || o.id}, '${conf.n}')">${conf.b}</button>`:''}<button class="btn-cancel" onclick="updateOrderStatus(${o.internalId || o.id}, 'Cancelled')">Void</button></div></div>`;
                     if(['Pending','Received','Preparing'].includes(o.status)) document.getElementById('kitchenGrid').innerHTML += html;
-                    else if(o.status === 'Prepared') { readyOrdersHtml += `<div class="order-card" style="border-left-color:var(--success); background: rgba(16, 185, 129, 0.03); padding: 18px; margin-bottom:12px; border-radius:20px;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><span style="font-weight:800; font-size:1.4rem; color:var(--success);">#${o.id}</span><span class="status-pill" style="color:var(--success); background:rgba(16,185,129,0.1); border-color:var(--success);">READY</span></div><div style="font-size:0.85rem; color:var(--text-dim); margin-bottom:5px;">Type: ${o.orderType || 'Takeaway'} ${o.tableNumber && o.tableNumber !== 'N/A' ? `| Table: ${o.tableNumber}` : ''}</div><div style="font-size:0.95rem; margin-bottom:18px; color:var(--text-main); font-weight:500;">${o.items.map(i=>`${i.qty}x ${i.name}`).join(', ')}</div><button class="submit-btn-large" style="background:var(--success); margin:0; padding:12px; height:auto; box-shadow:none;" onclick="updateOrderStatus(${o.internalId || o.id}, 'Collected')">LOG HANDOVER</button></div>`; }
+                    else if(o.status === 'Prepared') { readyOrdersHtml += `<div class="order-card" style="border-left-color:var(--success); background: rgba(16, 185, 129, 0.03); padding: 18px; margin-bottom:12px; border-radius:20px;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><span style="font-weight:800; font-size:1.4rem; color:var(--success);">#${o.id}</span><span class="status-pill" style="color:var(--success); background:rgba(16,185,129,0.1); border-color:var(--success);">READY</span></div><div style="font-size:0.85rem; color:var(--text-dim); margin-bottom:5px;">Type: ${o.orderType || 'Takeaway'}</div><div style="font-size:0.95rem; margin-bottom:18px; color:var(--text-main); font-weight:500;">${o.items.map(i=>`${i.qty}x ${i.name}`).join(', ')}</div><button class="submit-btn-large" style="background:var(--success); margin:0; padding:12px; height:auto; box-shadow:none;" onclick="updateOrderStatus(${o.internalId || o.id}, 'Collected')">LOG HANDOVER</button></div>`; }
                 }
                 if(o.status === 'Collected') {
                     tRev += o.subtotal; tTips += o.tip; tOrd++; tProf += (o.subtotal - (o.totalCost || 0));
