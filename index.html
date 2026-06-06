@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>REat - V1.2</title>
+    <title>REat - V1.3</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
@@ -162,7 +162,7 @@
 
     <!-- CUSTOMER HUB -->
     <div id="customer-hub" class="screen-overlay">
-        <h1 style="font-size: 4rem; font-weight: 800; letter-spacing: -2px; margin-bottom: 5px;">REat <span style="color:var(--primary); font-size: 1.5rem; vertical-align: middle;">V1.2</span></h1>
+        <h1 style="font-size: 4rem; font-weight: 800; letter-spacing: -2px; margin-bottom: 5px;">REat <span style="color:var(--primary); font-size: 1.5rem; vertical-align: middle;">V1.3</span></h1>
         <p style="color: var(--text-dim); font-size: 1.1rem; max-width: 400px; margin-bottom: 20px;">Premium Local Ordering</p>
         
         <div class="hub-search-box">
@@ -244,7 +244,7 @@
                     <span class="header-status"><span class="lan-indicator offline" id="lanDot"></span>Net ID: <b id="myPeerId" style="color:var(--primary); font-size: 1.05rem;">...</b></span>
                     <div style="display:flex; align-items:center; gap:10px; background:var(--bg-deep); padding: 8px 16px; border-radius: 14px; border:1px solid var(--border);"><span style="font-size:0.8rem; font-weight:700; color:var(--text-dim);">STORE ONLINE</span><input type="checkbox" class="master-switch" id="storeOnlineSwitch" onchange="toggleStoreOnline()"></div>
                 </div>
-                <h1>REat V1.2</h1>
+                <h1 id="brandHeaderLabel">REat V1.3</h1>
                 <div style="width: 320px; text-align: right; display: flex; justify-content: flex-end; gap: 12px; align-items: center;"><span class="header-status" id="headerCashierLabel" onclick="promptRegisterUnlock()" style="background: var(--primary); border:none; color:white; box-shadow: 0 4px 15px var(--primary-glow);">Cashier: Sign In ✎</span></div>
             </header>
 
@@ -341,7 +341,7 @@
                     </div>
 
                     <div class="panel" id="syncStatusUI">
-                        <!-- Populated dynamically by JS in renderAll() -->
+                        <!-- Dynamic Sync Control Core Panel -->
                     </div>
                     
                     <div class="panel">
@@ -374,7 +374,7 @@
     <div id="modalContainer" class="modal-overlay"></div>
 
     <script>
-        // --- SMART ROUTER REat V1.2 ---
+        // --- SMART ROUTER REat V1.3 ---
         let isStoreRoute = false;
         
         document.addEventListener('DOMContentLoaded', () => {
@@ -408,12 +408,6 @@
         let currentPosCategory = 'All';
         let posOrderMode = 'Takeaway';
 
-        const storeDirectory = [
-            { id: "reat-store-hellzblaze-test", name: "HellzBlaze Test Store" },
-            { id: "reat-store-my-restaurant", name: "My Restaurant" },
-            { id: "reat-store-demo-cafe", name: "Demo Cafe" }
-        ];
-
         function generateStorePeerId(name) { return 'reat-store-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
 
         // --- GLOBAL NETWORK VARIABLES ---
@@ -423,9 +417,11 @@
         let staffSyncPeer = null;       
         let isMainTerminal = true;
         let connectedSideTerminals = [];
+        let connectedCustomers = []; 
         let mainConnection = null;    
 
         function initStoreNetwork() {
+            if(staffSyncPeer) { try { staffSyncPeer.destroy(); } catch(e){} }
             staffSyncPeer = new Peer('reat-sync-' + state.syncCode);
             
             staffSyncPeer.on('open', (id) => { 
@@ -433,28 +429,7 @@
                 document.getElementById('myPeerId').innerText = state.syncCode; 
                 document.getElementById('lanDot').className = 'lan-indicator online';
 
-                const publicStoreId = generateStorePeerId(state.storeName);
-                publicCustomerPeer = new Peer(publicStoreId);
-                
-                publicCustomerPeer.on('connection', (conn) => { 
-                    if(!state.isOnline) {
-                        conn.on('open', () => { conn.send({ type: 'ERROR', message: 'Restaurant is currently offline.'}); setTimeout(()=>conn.close(), 500); });
-                        return;
-                    }
-                    conn.on('open', () => { conn.send({ type: 'SYNC_MENU', payload: { menu: state.menuItems, cats: state.categories, tops: state.toppings, storeName: state.storeName } }); });
-                    conn.on('data', (data) => {
-                        if (data.type === 'NEW_ORDER') {
-                            state.orderCounter++;
-                            data.order.id = 'C' + state.orderCounter;
-                            data.order.internalId = Date.now();
-                            state.orders.push(data.order);
-                            broadcastState(); 
-                            conn.send({ type: 'ORDER_CONFIRMED', orderId: data.order.id }); 
-                            alert(`🔔 New ${data.order.orderType} Order Received! (ID: #${data.order.id})`);
-                        }
-                    });
-                });
-
+                bindPublicCustomerListener();
                 renderAll(); 
             });
             
@@ -487,9 +462,39 @@
                     isMainTerminal = false;
                     document.getElementById('myPeerId').innerText = "Side Terminal (Unsynced)";
                     staffSyncPeer = new Peer(); 
-                    // No longer auto-connecting. Wait for manual sync.
                     staffSyncPeer.on('open', () => renderAll());
                 }
+            });
+        }
+
+        function bindPublicCustomerListener() {
+            if(publicCustomerPeer) { try { publicCustomerPeer.destroy(); } catch(e){} }
+            connectedCustomers = [];
+
+            const publicStoreId = generateStorePeerId(state.storeName);
+            publicCustomerPeer = new Peer(publicStoreId);
+            
+            publicCustomerPeer.on('connection', (conn) => { 
+                if(!state.isOnline) {
+                    conn.on('open', () => { conn.send({ type: 'ERROR', message: 'Restaurant is currently offline.'}); setTimeout(()=>conn.close(), 500); });
+                    return;
+                }
+                connectedCustomers.push(conn);
+                conn.on('open', () => { conn.send({ type: 'SYNC_MENU', payload: { menu: state.menuItems, cats: state.categories, tops: state.toppings, storeName: state.storeName } }); });
+                conn.on('data', (data) => {
+                    if (data.type === 'NEW_ORDER') {
+                        state.orderCounter++;
+                        data.order.id = 'C' + state.orderCounter;
+                        data.order.internalId = Date.now();
+                        state.orders.push(data.order);
+                        broadcastState(); 
+                        conn.send({ type: 'ORDER_CONFIRMED', orderId: data.order.id }); 
+                        alert(`🔔 New ${data.order.orderType} Order Received! (ID: #${data.order.id})`);
+                    }
+                });
+                conn.on('close', () => {
+                    connectedCustomers = connectedCustomers.filter(c => c !== conn);
+                });
             });
         }
 
@@ -526,7 +531,6 @@
                 document.getElementById('myPeerId').innerText = "Disconnected";
                 mainConnection = null;
                 renderAll();
-                // Removed the silent disconnect alert popup
             });
         }
 
@@ -542,14 +546,14 @@
             if (confirm("Force change connection status? (Main Terminal ↔ Side Terminal)")) {
                 if (isMainTerminal) {
                     isMainTerminal = false;
-                    if (peer) peer.destroy();
-                    peer = new Peer();
-                    alert("Switched to Side Terminal mode.");
+                    if (publicCustomerPeer) { publicCustomerPeer.destroy(); publicCustomerPeer = null; }
+                    if (staffSyncPeer) { staffSyncPeer.destroy(); staffSyncPeer = null; }
+                    staffSyncPeer = new Peer();
+                    staffSyncPeer.on('open', () => renderAll());
                 } else {
                     isMainTerminal = true;
-                    if (peer) peer.destroy();
+                    if (mainConnection) mainConnection.close();
                     initStoreNetwork();
-                    alert("Switched to Main Terminal mode.");
                 }
                 renderAll();
             }
@@ -573,11 +577,29 @@
 
         function broadcastState(excludePeerId = null) { 
             localStorage.setItem('reatState1_0', JSON.stringify(state));
-            if (!isMainTerminal && mainConnection && mainConnection.open) { mainConnection.send({ type: 'SYNC_DATA', payload: state }); }
-            if (isMainTerminal && connectedSideTerminals.length > 0) {
-                connectedSideTerminals.forEach(conn => {
-                    if (conn.open && conn.peer !== excludePeerId) { conn.send({ type: 'SYNC_DATA', payload: state }); }
-                });
+            
+            // Push structure to connected networks
+            if (!isMainTerminal && mainConnection && mainConnection.open) { 
+                mainConnection.send({ type: 'SYNC_DATA', payload: state }); 
+            }
+            if (isMainTerminal) {
+                if(connectedSideTerminals.length > 0) {
+                    connectedSideTerminals.forEach(conn => {
+                        if (conn.open && conn.peer !== excludePeerId) { conn.send({ type: 'SYNC_DATA', payload: state }); }
+                    });
+                }
+                if(connectedCustomers.length > 0) {
+                    connectedCustomers.forEach(conn => {
+                        if(conn.open) {
+                            if(!state.isOnline) {
+                                conn.send({ type: 'ERROR', message: 'Restaurant went offline.' });
+                                setTimeout(() => conn.close(), 200);
+                            } else {
+                                conn.send({ type: 'SYNC_MENU', payload: { menu: state.menuItems, cats: state.categories, tops: state.toppings, storeName: state.storeName } });
+                            }
+                        }
+                    });
+                }
             }
             if(isStoreRoute) renderAll(); 
         }
@@ -589,8 +611,24 @@
 
         function initCustomerNetwork() {
             peer = new Peer();
-            peer.on('error', (err) => { console.log("Customer Peer Error ignored to prevent scanner crash:", err.type); });
+            peer.on('error', (err) => { console.log("Network handling node silent check:", err.type); });
             peer.on('open', () => scanForOnlineStores());
+        }
+
+        function getScannerRegistry() {
+            const defaults = ["HellzBlaze Test Store", "My Restaurant", "Demo Cafe"];
+            let records = JSON.parse(localStorage.getItem('reat_discovered_stores')) || [];
+            defaults.forEach(d => { if(!records.includes(d)) records.push(d); });
+            return records.map(name => ({ id: generateStorePeerId(name), name: name }));
+        }
+
+        function saveStoreToRegistry(name) {
+            if(!name) return;
+            let records = JSON.parse(localStorage.getItem('reat_discovered_stores')) || [];
+            if(!records.includes(name)) {
+                records.push(name);
+                localStorage.setItem('reat_discovered_stores', JSON.stringify(records));
+            }
         }
 
         function scanForOnlineStores() {
@@ -598,9 +636,9 @@
             if(!grid) return;
             let onlineHTML = ''; let checkedCount = 0;
             
-            let localDir = [...storeDirectory];
+            let targets = getScannerRegistry();
             
-            localDir.forEach(store => {
+            targets.forEach(store => {
                 let pingConn = peer.connect(store.id);
                 let isDone = false;
                 
@@ -623,8 +661,8 @@
 
                 function checkDone() { 
                     checkedCount++; 
-                    if(checkedCount === localDir.length) {
-                        grid.innerHTML = onlineHTML === '' ? '<div style="grid-column: 1/-1; padding: 20px; color: var(--accent); font-weight: 600;">No networks detected nearby. Wait for a restaurant to go online, or manually enter their name.</div>' : onlineHTML; 
+                    if(checkedCount === targets.length) {
+                        grid.innerHTML = onlineHTML === '' ? '<div style="grid-column: 1/-1; padding: 20px; color: var(--text-dim); font-weight: 600;">No online restaurants found nearby. Type a name to search manually or try scanning again.</div>' : onlineHTML; 
                     } 
                 }
             });
@@ -634,10 +672,10 @@
             let input = document.getElementById('manualStoreName').value.trim();
             if(!input) return alert("Please enter a valid store name.");
             let targetPeerId = generateStorePeerId(input);
-            connectToStoreAsCustomer(targetPeerId);
+            connectToStoreAsCustomer(targetPeerId, input);
         }
 
-        function connectToStoreAsCustomer(targetPeerId) {
+        function connectToStoreAsCustomer(targetPeerId, plaintextName = null) {
             const statusEl = document.getElementById('hubStatusText');
             statusEl.style.display = 'block'; statusEl.style.color = 'var(--text-main)'; statusEl.innerText = "Connecting to Restaurant...";
             activeConnection = peer.connect(targetPeerId);
@@ -647,6 +685,9 @@
                 if(data.type === 'ERROR') { statusEl.innerText = data.message; statusEl.style.color = 'var(--accent)'; activeConnection.close(); }
                 if(data.type === 'SYNC_MENU') {
                     custMenuData = data.payload;
+                    if(plaintextName) { saveStoreToRegistry(plaintextName); }
+                    saveStoreToRegistry(custMenuData.storeName);
+                    
                     document.getElementById('custStoreNameDisplay').innerText = custMenuData.storeName;
                     document.getElementById('customer-hub').classList.remove('active');
                     document.getElementById('customer-menu-view').classList.add('active');
@@ -670,7 +711,7 @@
             function triggerDisconnectFail() {
                 document.getElementById('customer-hub').classList.add('active');
                 document.getElementById('customer-menu-view').classList.remove('active');
-                statusEl.innerText = "Connection failed. Ensure store is online."; statusEl.style.color = 'var(--accent)';
+                statusEl.innerText = "Connection lost or closed."; statusEl.style.color = 'var(--accent)';
                 scanForOnlineStores(); 
             }
         }
@@ -763,8 +804,25 @@
             } else { alert("Incorrect System PIN."); }
         }
 
-        function toggleStoreOnline() { state.isOnline = document.getElementById('storeOnlineSwitch').checked; broadcastState(); }
-        function updateStoreName() { let newName = document.getElementById('storeNameInput').value.trim(); if(newName) { state.storeName = newName; broadcastState(); alert("Cosmetic Store Name updated! Customers can now search for this name."); } }
+        function toggleStoreOnline() { 
+            state.isOnline = document.getElementById('storeOnlineSwitch').checked; 
+            if(isMainTerminal && !state.isOnline) {
+                if(publicCustomerPeer) { publicCustomerPeer.destroy(); publicCustomerPeer = null; }
+            } else if(isMainTerminal && state.isOnline) {
+                bindPublicCustomerListener();
+            }
+            broadcastState(); 
+        }
+
+        function updateStoreName() { 
+            let newName = document.getElementById('storeNameInput').value.trim(); 
+            if(newName) { 
+                state.storeName = newName; 
+                if(isMainTerminal) { bindPublicCustomerListener(); }
+                broadcastState(); 
+                alert("Store Name fully updated across network streams."); 
+            } 
+        }
 
         function setPosOrderType(type) {
             posOrderMode = type; document.getElementById('posBtnTakeaway').classList.remove('active'); document.getElementById('posBtnDineIn').classList.remove('active');
@@ -867,7 +925,7 @@
             state.employees.forEach(e => { csvContent += `Employee,${e.id},${e.name.replace(/,/g, ' ')},${e.sector},${e.role},\n`; });
             csvContent += `System_PINs,AdminPIN:${state.adminPin},ManagerPIN:${state.managerPin},,,,\n`;
             state.orders.forEach(o => { let safeTime = formatTime(o.timestamp).replace(/,/g, ''); csvContent += `Order,${o.internalId || o.id},Total:${o.total},Cost:${o.totalCost || 0},Cashier:${o.cashier},${safeTime}\n`; });
-            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "reat_backup_v1_2.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "reat_backup_v1_3.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
 
         function importCSV(event) {
@@ -887,13 +945,16 @@
         }
         
         function changePin(type) { const old = prompt(`Provide Current PIN:`), nw = prompt("New PIN (min 4 digits):"); if(old === state[type+'Pin'] && nw?.length >= 4) { state[type+'Pin'] = nw; broadcastState(); alert("PIN Updated."); } }
-        function wipeHistory() { if(prompt("Type DELETE to execute override:") === "DELETE") { state = { storeName: state.storeName, syncCode: state.syncCode, categories: ['Mains'], menuItems: [], toppings: [], employees: [], orders: [], orderCounter: 100, adminPin: '1234', managerPin: '5678', activeCashier: 'Unassigned' }; broadcastState(); alert("System wiped."); } }
+        function wipeHistory() { if(prompt("Type DELETE to execute override:") === "DELETE") { state = { storeName: "My Restaurant", syncCode: Math.floor(10000 + Math.random() * 90000).toString(), categories: ['Mains'], menuItems: [], toppings: [], employees: [], orders: [], orderCounter: 100, adminPin: '1234', managerPin: '5678', activeCashier: 'Unassigned' }; broadcastState(); alert("System wiped."); } }
         function startNewDay() { if(confirm("Reset ticket counter to #1?")) { state.orderCounter = 0; broadcastState(); alert("Counter reset."); } }
 
 
         // --- RENDER ALL (UI Refresh) ---
         function renderAll() {
             if(!document.getElementById('headerCashierLabel')) return;
+
+            // Reflect live brand cosmetic naming instantly
+            document.getElementById('brandHeaderLabel').innerText = `${state.storeName} POS`;
 
             let syncHtml = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;"><h3 style="margin:0;">Device Synchronization</h3></div>
             <div style="display:flex; gap:24px; align-items:center; margin-bottom:24px; background:var(--bg-deep); padding:20px; border-radius:16px; border:1px solid var(--border);">
