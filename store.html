@@ -99,7 +99,7 @@
         .submit-btn-large:hover { transform: translateY(-2px); box-shadow: 0 12px 30px var(--primary-glow); }
         .btn-status { background: var(--primary); border: none; padding: 14px; border-radius: 14px; color: white; font-weight: 700; cursor: pointer; width: 100%;}
         .btn-cancel { background: transparent; border: 1.5px solid var(--accent); color: var(--accent); padding: 14px; border-radius: 14px; font-weight: 700; cursor: pointer;}
-        .btn-edit { background: transparent; border: 1.5px solid var(--primary); color: var(--primary); padding: 6px 14px; border-radius: 10px; font-weight: 600; cursor: pointer; margin-right: 6px; }
+        .btn-edit { background: transparent; border: 1.5px solid var(--primary); color: var(--primary); padding: 6px 14px; border-radius: 10px; font-weight: 600; cursor: margin-right: 6px; }
         .btn-delete { background: transparent; border: 1.5px solid var(--accent); color: var(--accent); padding: 6px 14px; border-radius: 10px; font-weight: 600; cursor: pointer; }
 
         .cart-items-container { flex: 1; margin: 16px 0; overflow-y: auto; padding-right: 6px; min-height: 250px; }
@@ -160,6 +160,7 @@
 </head>
 <body>
 
+    <!-- CUSTOMER HUB -->
     <div id="customer-hub" class="screen-overlay">
         <h1 style="font-size: 4rem; font-weight: 800; letter-spacing: -2px; margin-bottom: 5px;">REat <span style="color:var(--primary); font-size: 1.5rem; vertical-align: middle;">V1.4</span></h1>
         <p style="color: var(--text-dim); font-size: 1.1rem; max-width: 400px; margin-bottom: 20px;">Premium Local Ordering</p>
@@ -180,6 +181,7 @@
         <button onclick="window.location.href = 'store.html'" style="margin-top:auto; margin-bottom: 20px; background:transparent; border:1px solid var(--border); color:var(--text-dim); padding: 10px 20px; border-radius: 12px; cursor:pointer; font-weight:600;">Switch to Staff POS (store.html)</button>
     </div>
 
+    <!-- CUSTOMER MENU -->
     <div id="customer-menu-view" class="screen-overlay">
         <div class="cust-nav">
             <div style="display:flex; flex-direction:column;">
@@ -223,6 +225,7 @@
         </button>
     </div>
 
+    <!-- STAFF APP -->
     <div id="staff-app-container" class="screen-overlay">
         <div id="staff-login-gate" style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; width:100%; background:var(--bg-deep); z-index:3000;">
             <div class="panel" style="width: 100%; max-width: 450px; text-align:center; padding: 40px;">
@@ -338,7 +341,8 @@
                     </div>
 
                     <div class="panel" id="syncStatusUI">
-                        </div>
+                        <!-- Dynamic Sync Control Core Panel -->
+                    </div>
                     
                     <div class="panel">
                         <h3 style="margin-bottom: 16px;">System Connections & Vault Data</h3>
@@ -366,6 +370,7 @@
         </div>
     </div>
 
+    <!-- MODAL CONTAINER -->
     <div id="modalContainer" class="modal-overlay"></div>
 
     <script>
@@ -555,7 +560,6 @@
         function forceRebootAsMain() {
             if(confirm("Upgrade this device to a Main Terminal? It will host its own isolated network.")) {
                 isMainTerminal = true;
-                // V1.4 Fix: Force generate a fresh, unique sync code so it doesn't conflict with the previous main terminal it was slaved to.
                 state.syncCode = Math.floor(10000 + Math.random() * 90000).toString();
                 localStorage.setItem('reatState1_0', JSON.stringify(state));
                 
@@ -642,7 +646,7 @@
                 
                 let pingTimeout = setTimeout(() => { 
                     if(!isDone) { isDone = true; pingConn.close(); checkDone(); } 
-                }, 1800);
+                }, 6000); // Increased timeout to allow proper WebRTC negotiation on public PeerJS servers
 
                 pingConn.on('data', (data) => {
                     if(isDone) return;
