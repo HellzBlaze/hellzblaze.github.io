@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>REat - V1.3</title>
+    <title>REat - V1.4</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
@@ -160,9 +160,8 @@
 </head>
 <body>
 
-    <!-- CUSTOMER HUB -->
     <div id="customer-hub" class="screen-overlay">
-        <h1 style="font-size: 4rem; font-weight: 800; letter-spacing: -2px; margin-bottom: 5px;">REat <span style="color:var(--primary); font-size: 1.5rem; vertical-align: middle;">V1.3</span></h1>
+        <h1 style="font-size: 4rem; font-weight: 800; letter-spacing: -2px; margin-bottom: 5px;">REat <span style="color:var(--primary); font-size: 1.5rem; vertical-align: middle;">V1.4</span></h1>
         <p style="color: var(--text-dim); font-size: 1.1rem; max-width: 400px; margin-bottom: 20px;">Premium Local Ordering</p>
         
         <div class="hub-search-box">
@@ -181,7 +180,6 @@
         <button onclick="window.location.href = 'store.html'" style="margin-top:auto; margin-bottom: 20px; background:transparent; border:1px solid var(--border); color:var(--text-dim); padding: 10px 20px; border-radius: 12px; cursor:pointer; font-weight:600;">Switch to Staff POS (store.html)</button>
     </div>
 
-    <!-- CUSTOMER MENU -->
     <div id="customer-menu-view" class="screen-overlay">
         <div class="cust-nav">
             <div style="display:flex; flex-direction:column;">
@@ -225,7 +223,6 @@
         </button>
     </div>
 
-    <!-- STAFF APP -->
     <div id="staff-app-container" class="screen-overlay">
         <div id="staff-login-gate" style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; width:100%; background:var(--bg-deep); z-index:3000;">
             <div class="panel" style="width: 100%; max-width: 450px; text-align:center; padding: 40px;">
@@ -244,7 +241,7 @@
                     <span class="header-status"><span class="lan-indicator offline" id="lanDot"></span>Net ID: <b id="myPeerId" style="color:var(--primary); font-size: 1.05rem;">...</b></span>
                     <div style="display:flex; align-items:center; gap:10px; background:var(--bg-deep); padding: 8px 16px; border-radius: 14px; border:1px solid var(--border);"><span style="font-size:0.8rem; font-weight:700; color:var(--text-dim);">STORE ONLINE</span><input type="checkbox" class="master-switch" id="storeOnlineSwitch" onchange="toggleStoreOnline()"></div>
                 </div>
-                <h1 id="brandHeaderLabel">REat V1.3</h1>
+                <h1 id="brandHeaderLabel">REat V1.4</h1>
                 <div style="width: 320px; text-align: right; display: flex; justify-content: flex-end; gap: 12px; align-items: center;"><span class="header-status" id="headerCashierLabel" onclick="promptRegisterUnlock()" style="background: var(--primary); border:none; color:white; box-shadow: 0 4px 15px var(--primary-glow);">Cashier: Sign In ✎</span></div>
             </header>
 
@@ -341,8 +338,7 @@
                     </div>
 
                     <div class="panel" id="syncStatusUI">
-                        <!-- Dynamic Sync Control Core Panel -->
-                    </div>
+                        </div>
                     
                     <div class="panel">
                         <h3 style="margin-bottom: 16px;">System Connections & Vault Data</h3>
@@ -370,11 +366,10 @@
         </div>
     </div>
 
-    <!-- MODAL CONTAINER -->
     <div id="modalContainer" class="modal-overlay"></div>
 
     <script>
-        // --- SMART ROUTER REat V1.3 ---
+        // --- SMART ROUTER REat V1.4 ---
         let isStoreRoute = false;
         
         document.addEventListener('DOMContentLoaded', () => {
@@ -463,6 +458,7 @@
                     document.getElementById('myPeerId').innerText = "Side Terminal (Unsynced)";
                     staffSyncPeer = new Peer(); 
                     staffSyncPeer.on('open', () => renderAll());
+                    alert("Network ID collision. Device downgraded to Side Terminal. Try upgrading again.");
                 }
             });
         }
@@ -542,28 +538,31 @@
             renderAll();
         }
 
-        function toggleManualStatus() {
-            if (confirm("Force change connection status? (Main Terminal ↔ Side Terminal)")) {
-                if (isMainTerminal) {
-                    isMainTerminal = false;
-                    if (publicCustomerPeer) { publicCustomerPeer.destroy(); publicCustomerPeer = null; }
-                    if (staffSyncPeer) { staffSyncPeer.destroy(); staffSyncPeer = null; }
-                    staffSyncPeer = new Peer();
-                    staffSyncPeer.on('open', () => renderAll());
-                } else {
-                    isMainTerminal = true;
-                    if (mainConnection) mainConnection.close();
-                    initStoreNetwork();
-                }
-                renderAll();
+        function forceRebootAsSide() {
+            if (confirm("Downgrade this Main Terminal into a Side Terminal? You will need another Main Terminal's sync code to connect.")) {
+                isMainTerminal = false;
+                if (publicCustomerPeer) { try { publicCustomerPeer.destroy(); } catch(e){} }
+                if (staffSyncPeer) { try { staffSyncPeer.destroy(); } catch(e){} }
+                
+                connectedSideTerminals.forEach(c => c.close());
+                connectedSideTerminals = [];
+
+                staffSyncPeer = new Peer();
+                staffSyncPeer.on('open', () => renderAll());
             }
         }
 
         function forceRebootAsMain() {
-            if(confirm("Disconnect from current network and reboot this device as a Main Terminal?")) {
+            if(confirm("Upgrade this device to a Main Terminal? It will host its own isolated network.")) {
                 isMainTerminal = true;
-                if(staffSyncPeer) staffSyncPeer.destroy();
-                if(mainConnection) mainConnection.close();
+                // V1.4 Fix: Force generate a fresh, unique sync code so it doesn't conflict with the previous main terminal it was slaved to.
+                state.syncCode = Math.floor(10000 + Math.random() * 90000).toString();
+                localStorage.setItem('reatState1_0', JSON.stringify(state));
+                
+                if(staffSyncPeer) { try { staffSyncPeer.destroy(); } catch(e){} }
+                if(mainConnection) { try { mainConnection.close(); } catch(e){} }
+                mainConnection = null;
+                
                 initStoreNetwork();
             }
         }
@@ -578,7 +577,6 @@
         function broadcastState(excludePeerId = null) { 
             localStorage.setItem('reatState1_0', JSON.stringify(state));
             
-            // Push structure to connected networks
             if (!isMainTerminal && mainConnection && mainConnection.open) { 
                 mainConnection.send({ type: 'SYNC_DATA', payload: state }); 
             }
@@ -925,7 +923,7 @@
             state.employees.forEach(e => { csvContent += `Employee,${e.id},${e.name.replace(/,/g, ' ')},${e.sector},${e.role},\n`; });
             csvContent += `System_PINs,AdminPIN:${state.adminPin},ManagerPIN:${state.managerPin},,,,\n`;
             state.orders.forEach(o => { let safeTime = formatTime(o.timestamp).replace(/,/g, ''); csvContent += `Order,${o.internalId || o.id},Total:${o.total},Cost:${o.totalCost || 0},Cashier:${o.cashier},${safeTime}\n`; });
-            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "reat_backup_v1_3.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "reat_backup_v1_4.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
 
         function importCSV(event) {
@@ -953,7 +951,6 @@
         function renderAll() {
             if(!document.getElementById('headerCashierLabel')) return;
 
-            // Reflect live brand cosmetic naming instantly
             document.getElementById('brandHeaderLabel').innerText = `${state.storeName} POS`;
 
             let syncHtml = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;"><h3 style="margin:0;">Device Synchronization</h3></div>
@@ -961,27 +958,27 @@
                 <div><span style="color:var(--text-dim); font-size:0.85rem; font-weight:700; text-transform:uppercase;">Sync Code</span><div style="font-size:2rem; font-weight:800; color:var(--primary);">${state.syncCode}</div></div>
                 <div style="width:1px; height:40px; background:var(--border);"></div>
                 <div><span style="color:var(--text-dim); font-size:0.85rem; font-weight:700; text-transform:uppercase;">Status</span><div style="font-size:1.1rem; font-weight:800; color:${isMainTerminal ? 'var(--success)' : 'var(--warning)'};">${isMainTerminal ? 'MAIN' : 'SIDE'}</div></div>
-            </div>
-            
-            <div style="margin-top:20px; display:flex; gap:10px;">
-                <button class="btn-status" style="background:var(--accent); width:100%;" onclick="toggleManualStatus()">Force Manual Status Toggle</button>
             </div>`;
 
             if(isMainTerminal) {
                 syncHtml += `<h4 style="margin-top:24px; margin-bottom:12px; color:var(--text-dim);">Connected Side Terminals (${connectedSideTerminals.length})</h4>`;
-                if(connectedSideTerminals.length === 0) syncHtml += `<p style="color:var(--text-dim); font-size:0.95rem; font-style:italic;">No secondary devices are currently synced to this terminal.</p>`;
+                if(connectedSideTerminals.length === 0) {
+                    syncHtml += `<p style="color:var(--text-dim); font-size:0.95rem; font-style:italic;">No secondary devices are currently synced to this terminal.</p>`;
+                }
                 connectedSideTerminals.forEach(conn => {
                     syncHtml += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-deep); padding:16px; border-radius:12px; margin-bottom:10px; border:1px solid var(--border);">
                         <span style="font-family:monospace; font-size:1rem; color:var(--text-main);">${conn.peer}</span>
                         <button class="btn-cancel" style="padding:8px 16px; width:auto;" onclick="disconnectSideTerminal('${conn.peer}')">UNSYNC</button>
                     </div>`;
                 });
+                
                 syncHtml += `<div style="margin-top:24px; border-top:1px dashed var(--border); padding-top:24px;">
-                    <label style="font-size:0.8rem; color:var(--text-dim); font-weight:700;">Connect as Side Terminal</label>
-                    <div style="display:flex; gap:12px; margin-top:8px;">
-                        <input type="text" id="syncIdInput" placeholder="Enter Main Sync Code..." style="flex:1; background:var(--bg-deep); border:1px solid var(--border); padding:14px; border-radius:12px; color:white;">
-                        <button class="btn-status" style="width:auto; padding:14px 24px;" onclick="manualSync()">SYNC DEVICE</button>
-                    </div>
+                    <label style="font-size:0.8rem; color:var(--text-dim); font-weight:700;">How to add a Side Terminal</label>
+                    <p style="font-size:0.95rem; color:var(--text-main); margin-top:8px;">On your secondary device, go to System Control and enter this Main Terminal's Sync Code <b>(${state.syncCode})</b>.</p>
+                </div>
+                
+                <div style="margin-top:20px; border-top:1px dashed var(--border); padding-top:20px;">
+                     <button class="btn-cancel" style="border-color:var(--warning); color:var(--warning); width:100%;" onclick="forceRebootAsSide()">DOWNGRADE THIS DEVICE TO SIDE TERMINAL</button>
                 </div>`;
             } else {
                 syncHtml += `<h4 style="margin-top:24px; margin-bottom:12px; color:var(--text-dim);">Connected to Main Terminal</h4>`;
@@ -994,10 +991,10 @@
                     syncHtml += `<div style="background:var(--bg-deep); padding:16px; border-radius:12px; border:1px solid var(--border); font-family:monospace; color:var(--warning); font-weight:bold; margin-bottom:12px;">Not Connected</div>
                     <div style="display:flex; gap:12px;">
                         <input type="text" id="syncIdInput" placeholder="Enter Main Sync Code..." style="flex:1; background:var(--bg-deep); border:1px solid var(--border); padding:14px; border-radius:12px; color:white;">
-                        <button class="btn-status" style="width:auto; padding:14px 24px;" onclick="manualSync()">SYNC DEVICE</button>
+                        <button class="btn-status" style="width:auto; padding:14px 24px;" onclick="manualSync()">SYNC TO MAIN</button>
                     </div>`;
                 }
-                syncHtml += `<button class="btn-cancel" style="margin-top:20px; width:100%; border-color:var(--warning); color:var(--warning);" onclick="forceRebootAsMain()">UNSYNC & REBOOT AS MAIN TERMINAL</button>`;
+                syncHtml += `<button class="btn-status" style="margin-top:20px; width:100%;" onclick="forceRebootAsMain()">UPGRADE TO MAIN TERMINAL</button>`;
             }
             document.getElementById('syncStatusUI').innerHTML = syncHtml;
 
