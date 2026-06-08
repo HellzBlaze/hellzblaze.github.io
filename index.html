@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>REat - V1.5</title>
+    <title>REat - V1.6</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
@@ -65,17 +65,20 @@
 
         /* --- STAFF APP STYLES --- */
         #staff-app { display: none; flex: 1; flex-direction: column; overflow: hidden; width: 100%; height: 100%; }
-        header { background: var(--glass); backdrop-filter: blur(20px); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); z-index: 100; }
-        header h1 { font-weight: 800; font-size: 1.6rem; letter-spacing: -1px; background: linear-gradient(135deg, var(--primary) 0%, #ffb84d 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .header-status { background: var(--bg-surface); padding: 10px 18px; border-radius: 14px; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: 1px solid var(--border); display: flex; align-items: center; gap: 10px; justify-content: center; }
+        header { background: var(--glass); backdrop-filter: blur(20px); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); z-index: 100; flex-wrap: wrap; gap: 14px;}
+        .header-left { display: flex; gap: 10px; align-items: center; flex: 1; min-width: 200px;}
+        .header-right { display: flex; gap: 12px; align-items: center; justify-content: flex-end; flex: 1; min-width: 200px;}
         
-        .master-switch { appearance: none; width: 50px; height: 26px; background: var(--accent); border-radius: 20px; position: relative; cursor: pointer; outline: none; }
+        header h1 { font-weight: 800; font-size: 1.6rem; letter-spacing: -1px; background: linear-gradient(135deg, var(--primary) 0%, #ffb84d 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; white-space: nowrap; }
+        .header-status { background: var(--bg-surface); padding: 10px 18px; border-radius: 14px; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: 1px solid var(--border); display: flex; align-items: center; gap: 10px; justify-content: center; white-space: nowrap;}
+        
+        .master-switch { appearance: none; width: 50px; height: 26px; background: var(--accent); border-radius: 20px; position: relative; cursor: pointer; outline: none; flex-shrink: 0;}
         .master-switch::before { content: ''; position: absolute; width: 20px; height: 20px; background: white; border-radius: 50%; top: 3px; left: 3px; transition: 0.3s; }
         .master-switch:checked { background: var(--success); }
         .master-switch:checked::before { transform: translateX(24px); }
 
-        nav { display: flex; justify-content: center; gap: 10px; padding: 14px; background: var(--bg-deep); border-bottom: 1px solid var(--border); overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
-        .tab-btn { padding: 12px 24px; border: 1px solid transparent; background: transparent; cursor: pointer; border-radius: 12px; font-weight: 600; font-size: 0.95rem; color: var(--text-dim); }
+        nav { display: flex; justify-content: flex-start; gap: 10px; padding: 14px; background: var(--bg-deep); border-bottom: 1px solid var(--border); overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+        .tab-btn { padding: 12px 24px; border: 1px solid transparent; background: transparent; cursor: pointer; border-radius: 12px; font-weight: 600; font-size: 0.95rem; color: var(--text-dim); flex-shrink: 0; }
         .tab-btn:hover { color: var(--text-main); background: var(--bg-surface); }
         .tab-btn.active { background: var(--primary); color: white; box-shadow: 0 10px 25px var(--primary-glow); }
         .tab-content { display: none; height: calc(100vh - 130px); padding: 24px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
@@ -92,8 +95,8 @@
         .stat-card .label { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
         .stat-card .val { font-size: 2.2rem; font-weight: 800; color: var(--text-main); line-height:1; }
 
-        .input-row { display: flex; gap: 12px; margin: 16px 0; align-items: stretch; }
-        .input-row input, .input-row select { flex: 1; background: var(--bg-deep); border: 1px solid var(--border); color: white; padding: 12px 18px; border-radius: 12px; outline: none; font-size: 0.95rem; }
+        .input-row { display: flex; gap: 12px; margin: 16px 0; align-items: stretch; flex-wrap: wrap;}
+        .input-row input, .input-row select { flex: 1; background: var(--bg-deep); border: 1px solid var(--border); color: white; padding: 12px 18px; border-radius: 12px; outline: none; font-size: 0.95rem; min-width: 150px;}
         .input-row button { padding: 12px 24px; border-radius: 12px; border: none; background: var(--primary); color: white; font-weight: 700; cursor: pointer; }
         textarea { width: 100%; background: var(--bg-deep); border: 1px solid var(--border); border-radius: 14px; color: white; padding: 14px; resize: none; margin-top: 12px; height: 90px; outline: none;}
         
@@ -121,7 +124,8 @@
         .order-card { background: var(--bg-surface); border-radius: 24px; border: 1px solid var(--border); padding: 24px; border-left: 6px solid var(--primary); }
         .status-pill { font-size: 0.75rem; text-transform: uppercase; padding: 6px 12px; border-radius: 10px; font-weight: 800; text-align: center; }
 
-        table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        .table-container { width: 100%; overflow-x: auto; padding-bottom: 5px; }
+        table { width: 100%; border-collapse: collapse; min-width: 500px; }
         th { text-align: left; padding: 16px 12px; color: var(--text-dim); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; border-bottom: 2px solid var(--border); }
         td { padding: 18px 12px; border-bottom: 1px solid var(--border); font-size: 0.95rem; background: transparent; }
         tr:hover td { background: rgba(255,255,255,0.02); }
@@ -146,20 +150,27 @@
             .mobile-cart-fab { display: flex; }
         }
         @media (max-width: 768px) {
-            header { flex-direction: column; gap: 14px; padding: 20px; }
-            header > div { width: 100% !important; justify-content: center !important; flex-wrap: wrap; }
+            header { flex-direction: column; padding: 15px; }
+            .header-left, .header-right { width: 100%; justify-content: center; flex-wrap: wrap; }
+            .header-left { order: 2; }
+            .header-right { order: 3; }
+            #brandHeaderLabel { order: 1; margin: 0; text-align: center; width: 100%; }
+            .header-status { font-size: 0.8rem; padding: 8px 12px; }
+            
             .modal-content { flex-direction: column; max-height: 95vh; }
             .modal-sidebar { width: 100%; border-left: none; border-top: 1px solid var(--border); }
             .tab-content { padding: 16px; } 
+            .panel { padding: 16px; }
             .directory-grid { grid-template-columns: 1fr; }
+            .toggle-switch { flex-wrap: wrap; }
+            .toggle-btn { font-size: 0.85rem; padding: 8px 4px; }
         }
     </style>
 </head>
 <body>
 
-    <!-- CUSTOMER HUB -->
     <div id="customer-hub" class="screen-overlay">
-        <h1 style="font-size: 4rem; font-weight: 800; letter-spacing: -2px; margin-bottom: 5px;">REat <span style="color:var(--primary); font-size: 1.5rem; vertical-align: middle;">V1.5</span></h1>
+        <h1 style="font-size: 4rem; font-weight: 800; letter-spacing: -2px; margin-bottom: 5px;">REat <span style="color:var(--primary); font-size: 1.5rem; vertical-align: middle;">V1.6</span></h1>
         <p style="color: var(--text-dim); font-size: 1.1rem; max-width: 400px; margin-bottom: 20px;">Premium Local Ordering</p>
         
         <div class="hub-search-box">
@@ -178,7 +189,6 @@
         <button onclick="window.location.href = 'store.html'" style="margin-top:auto; margin-bottom: 20px; background:transparent; border:1px solid var(--border); color:var(--text-dim); padding: 10px 20px; border-radius: 12px; cursor:pointer; font-weight:600;">Switch to Staff POS (store.html)</button>
     </div>
 
-    <!-- CUSTOMER MENU -->
     <div id="customer-menu-view" class="screen-overlay">
         <div class="cust-nav">
             <div style="display:flex; flex-direction:column;">
@@ -198,7 +208,6 @@
             <div class="cust-menu-scroll" id="custMenuContainer"></div>
         </div>
 
-        <!-- NEW POPUP CART MODAL -->
         <div class="cart-modal-overlay" id="cartModalOverlay">
             <div class="cust-cart-panel" id="custCartPanelObj">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
@@ -212,6 +221,10 @@
                     <button class="toggle-btn active" id="btnTakeaway" onclick="setOrderType('Takeaway')">Takeaway</button>
                     <button class="toggle-btn" id="btnDineIn" onclick="setOrderType('Dine-in')">Dine-in</button>
                     <button class="toggle-btn" id="btnDelivery" onclick="setOrderType('Delivery')">Delivery</button>
+                </div>
+
+                <div id="deliveryAddressContainer" style="display:none; margin-bottom: 16px;">
+                    <input type="text" id="custDeliveryAddress" placeholder="Enter Delivery Address / Room No." style="width:100%; background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:12px; color:white; outline:none; font-size:0.95rem;">
                 </div>
                 
                 <div class="cart-items-container" id="custCartList" style="min-height: 150px; flex:1; overflow-y:auto;"></div>
@@ -233,7 +246,6 @@
         </button>
     </div>
 
-    <!-- STAFF APP -->
     <div id="staff-app-container" class="screen-overlay">
         <div id="staff-login-gate" style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; width:100%; background:var(--bg-deep); z-index:3000;">
             <div class="panel" style="width: 100%; max-width: 450px; text-align:center; padding: 40px;">
@@ -248,12 +260,14 @@
 
         <div id="staff-app">
             <header>
-                <div style="width: 320px; display: flex; gap: 10px; align-items: center;">
+                <div class="header-left">
                     <span class="header-status"><span class="lan-indicator offline" id="lanDot"></span>Net ID: <b id="myPeerId" style="color:var(--primary); font-size: 1.05rem;">...</b></span>
                     <div style="display:flex; align-items:center; gap:10px; background:var(--bg-deep); padding: 8px 16px; border-radius: 14px; border:1px solid var(--border);"><span style="font-size:0.8rem; font-weight:700; color:var(--text-dim);">STORE ONLINE</span><input type="checkbox" class="master-switch" id="storeOnlineSwitch" onchange="toggleStoreOnline()"></div>
                 </div>
-                <h1 id="brandHeaderLabel">REat V1.5</h1>
-                <div style="width: 320px; text-align: right; display: flex; justify-content: flex-end; gap: 12px; align-items: center;"><span class="header-status" id="headerCashierLabel" onclick="promptRegisterUnlock()" style="background: var(--primary); border:none; color:white; box-shadow: 0 4px 15px var(--primary-glow);">Cashier: Sign In ✎</span></div>
+                <h1 id="brandHeaderLabel">REat V1.6</h1>
+                <div class="header-right">
+                    <span class="header-status" id="headerCashierLabel" onclick="promptRegisterUnlock()" style="background: var(--primary); border:none; color:white; box-shadow: 0 4px 15px var(--primary-glow);">Cashier: Sign In ✎</span>
+                </div>
             </header>
 
             <nav>
@@ -276,6 +290,11 @@
                             <button class="toggle-btn" id="posBtnDineIn" onclick="setPosOrderType('Dine-in')">Dine-in</button>
                             <button class="toggle-btn" id="posBtnDelivery" onclick="setPosOrderType('Delivery')">Delivery</button>
                         </div>
+                        
+                        <div id="posDeliveryAddressContainer" style="display:none; margin-bottom: 10px;">
+                            <input type="text" id="posDeliveryAddress" placeholder="Customer Address / Room..." style="width:100%; background:var(--bg-deep); border:1px solid var(--border); padding:10px; border-radius:10px; color:white; outline:none; font-size:0.9rem;">
+                        </div>
+
                         <div class="cart-items-container" id="cartItemsList"></div>
                         <div class="cart-totals">
                             <div class="total-row"><span>Cart Subtotal</span><span>₹<span id="cartSubtotal">0</span></span></div>
@@ -287,7 +306,15 @@
                         <button class="submit-btn-large" onclick="submitPosOrder()">DISPATCH TICKET</button>
                     </div>
                     <div class="right-panel">
-                        <div class="panel" style="padding: 20px;"><h3>Expedite Ready Counter</h3><div class="order-grid" id="completedOrdersGrid" style="grid-template-columns: 1fr; gap:10px;"></div></div>
+                        <div class="panel" style="padding: 20px;">
+                            <h3 style="margin-bottom: 12px;">Expedite Ready Counter</h3>
+                            
+                            <div style="font-size: 0.85rem; color: var(--text-dim); margin-top: 5px; margin-bottom: 10px; font-weight: 700;">PICKUP & DINE-IN</div>
+                            <div class="order-grid" id="completedOrdersGrid" style="grid-template-columns: 1fr; gap:10px; margin-bottom: 20px;"></div>
+                            
+                            <div style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 10px; font-weight: 700;">DELIVERY (READY TO DISPATCH)</div>
+                            <div class="order-grid" id="completedDeliveryGrid" style="grid-template-columns: 1fr; gap:10px;"></div>
+                        </div>
                         <div class="panel" style="flex: 1; display: flex; flex-direction: column; min-height: 500px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:12px;">
                                 <input type="text" id="posSearchInput" style="background:var(--bg-deep); border:1px solid var(--border); padding:10px 15px; border-radius:12px; color:white; outline:none; max-width:300px;" placeholder="🔍 Search menu..." oninput="renderAll()">
@@ -350,14 +377,13 @@
                     </div>
 
                     <div class="panel" id="syncStatusUI">
-                        <!-- Dynamic Sync Control Core Panel -->
-                    </div>
+                        </div>
                     
                     <div class="panel">
                         <h3 style="margin-bottom: 16px;">System Connections & Vault Data</h3>
                         
-                        <div style="display:flex; gap:12px; margin-bottom: 24px; align-items:flex-end; border-bottom: 1px solid var(--border); padding-bottom:24px;">
-                            <div style="flex:1;">
+                        <div style="display:flex; gap:12px; margin-bottom: 24px; align-items:flex-end; border-bottom: 1px solid var(--border); padding-bottom:24px; flex-wrap: wrap;">
+                            <div style="flex:1; min-width: 250px;">
                                 <label style="font-size:0.8rem; color:var(--text-dim); font-weight:700;">Public Store Cosmetic Name</label>
                                 <input type="text" id="storeNameInput" style="width:100%; background:var(--bg-deep); border:1px solid var(--border); padding:12px 18px; border-radius:12px; color:white; margin-top:6px; font-size:1rem;" placeholder="e.g. My Awesome Cafe">
                             </div>
@@ -379,11 +405,10 @@
         </div>
     </div>
 
-    <!-- MODAL CONTAINER -->
     <div id="modalContainer" class="modal-overlay"></div>
 
     <script>
-        // --- SMART ROUTER REat V1.5 ---
+        // --- SMART ROUTER REat V1.6 ---
         let isStoreRoute = false;
         
         document.addEventListener('DOMContentLoaded', () => {
@@ -645,9 +670,10 @@
         function scanForOnlineStores() {
             const grid = document.getElementById('storeDirectoryGrid');
             if(!grid) return;
-            let onlineHTML = ''; let checkedCount = 0;
-            
+            grid.innerHTML = '<div style="grid-column: 1/-1; padding: 30px;"><div class="scanner-text">Detecting active networks...</div></div>';
+            let checkedCount = 0;
             let targets = getScannerRegistry();
+            let foundAny = false;
             
             targets.forEach(store => {
                 let pingConn = peer.connect(store.id);
@@ -655,13 +681,14 @@
                 
                 let pingTimeout = setTimeout(() => { 
                     if(!isDone) { isDone = true; pingConn.close(); checkDone(); } 
-                }, 6000);
+                }, 3000);
 
                 pingConn.on('data', (data) => {
                     if(isDone) return;
                     if(data.type === 'SYNC_MENU') {
                         isDone = true; clearTimeout(pingTimeout);
-                        onlineHTML += `<div class="store-card" onclick="connectToStoreAsCustomer('${store.id}')"><h3 style="margin:0; font-size:1.1rem; color:var(--text-main);">${data.payload.storeName || store.name}</h3><span style="font-size:0.8rem; color:var(--success); font-weight:800;">● ONLINE - TAP TO CONNECT</span></div>`;
+                        if (!foundAny) { grid.innerHTML = ''; foundAny = true; }
+                        grid.innerHTML += `<div class="store-card" onclick="connectToStoreAsCustomer('${store.id}')"><h3 style="margin:0; font-size:1.1rem; color:var(--text-main);">${data.payload.storeName || store.name}</h3><span style="font-size:0.8rem; color:var(--success); font-weight:800;">● ONLINE - TAP TO CONNECT</span></div>`;
                         pingConn.close(); checkDone();
                     } else if(data.type === 'ERROR') {
                         isDone = true; clearTimeout(pingTimeout); pingConn.close(); checkDone();
@@ -672,8 +699,8 @@
 
                 function checkDone() { 
                     checkedCount++; 
-                    if(checkedCount === targets.length) {
-                        grid.innerHTML = onlineHTML === '' ? '<div style="grid-column: 1/-1; padding: 20px; color: var(--text-dim); font-weight: 600;">No online restaurants found nearby. Type a name to search manually or try scanning again.</div>' : onlineHTML; 
+                    if(checkedCount === targets.length && !foundAny) {
+                        grid.innerHTML = '<div style="grid-column: 1/-1; padding: 20px; color: var(--text-dim); font-weight: 600;">No online restaurants found nearby. Type a name to search manually or try scanning again.</div>'; 
                     } 
                 }
             });
@@ -747,6 +774,8 @@
             if(type === 'Takeaway') { document.getElementById('btnTakeaway').classList.add('active'); } 
             else if (type === 'Dine-in') { document.getElementById('btnDineIn').classList.add('active'); }
             else { document.getElementById('btnDelivery').classList.add('active'); }
+
+            document.getElementById('deliveryAddressContainer').style.display = (type === 'Delivery') ? 'block' : 'none';
         }
 
         function toggleCartModal() { 
@@ -817,8 +846,15 @@
 
         function submitCustomerOrder() {
             if(!custCart.length) return alert("Your cart is empty!");
+            
+            let address = '';
+            if (custOrderMode === 'Delivery') {
+                address = document.getElementById('custDeliveryAddress').value.trim();
+                if (!address) return alert("Please provide a delivery address.");
+            }
+
             const orderTotal = custCart.reduce((a,b)=>a+b.totalPrice,0), totalC = custCart.reduce((a,b)=>a+b.totalCost,0);
-            const orderPayload = { timestamp: Date.now(), items: [...custCart], subtotal: orderTotal, totalCost: totalC, tip: 0, total: orderTotal, status: 'Pending', cashier: 'Customer App', orderType: custOrderMode, tableNumber: 'N/A' };
+            const orderPayload = { timestamp: Date.now(), items: [...custCart], subtotal: orderTotal, totalCost: totalC, tip: 0, total: orderTotal, status: 'Pending', cashier: 'Customer App', orderType: custOrderMode, tableNumber: address || 'N/A' };
 
             if(activeConnection && activeConnection.open) {
                 activeConnection.send({ type: 'NEW_ORDER', order: orderPayload });
@@ -866,6 +902,8 @@
             if(type === 'Takeaway') { document.getElementById('posBtnTakeaway').classList.add('active'); } 
             else if (type === 'Dine-in') { document.getElementById('posBtnDineIn').classList.add('active'); }
             else { document.getElementById('posBtnDelivery').classList.add('active'); }
+
+            document.getElementById('posDeliveryAddressContainer').style.display = (type === 'Delivery') ? 'block' : 'none';
         }
 
         function openModal(html) { const c = document.getElementById('modalContainer'); c.innerHTML = html; c.classList.add('active'); }
@@ -912,9 +950,16 @@
 
         function submitPosOrder() {
             if(!currentCart.length) return alert("Queue empty.");
+            
+            let address = 'N/A';
+            if (posOrderMode === 'Delivery') {
+                address = document.getElementById('posDeliveryAddress').value.trim();
+                if (!address) return alert("Delivery Address required.");
+            }
+
             state.orderCounter++;
             
-            state.orders.push({ internalId: Date.now(), id: state.orderCounter, timestamp: Date.now(), items: [...currentCart], subtotal: currentCart.reduce((a,b)=>a+b.totalPrice,0), totalCost: currentCart.reduce((a,b)=>a+b.totalCost,0), tip: parseFloat(document.getElementById('cartTip').value)||0, total: currentCart.reduce((a,b)=>a+b.totalPrice,0)+(parseFloat(document.getElementById('cartTip').value)||0), status: 'Pending', cashier: state.activeCashier, orderType: posOrderMode, tableNumber: 'N/A' });
+            state.orders.push({ internalId: Date.now(), id: state.orderCounter, timestamp: Date.now(), items: [...currentCart], subtotal: currentCart.reduce((a,b)=>a+b.totalPrice,0), totalCost: currentCart.reduce((a,b)=>a+b.totalCost,0), tip: parseFloat(document.getElementById('cartTip').value)||0, total: currentCart.reduce((a,b)=>a+b.totalPrice,0)+(parseFloat(document.getElementById('cartTip').value)||0), status: 'Pending', cashier: state.activeCashier, orderType: posOrderMode, tableNumber: address });
             currentCart = []; document.getElementById('cartTip').value = '0'; document.getElementById('cartCashGiven').value = '0'; document.getElementById('cartChangeDue').innerText = '0.00';
             broadcastState(); updateCartUI();
         }
@@ -941,16 +986,46 @@
         function saveEmployeeModal() { const n = document.getElementById('modEmpName').value.trim(), id = document.getElementById('modEmpId').value.trim(), s = document.getElementById('modEmpSector').value, r = document.getElementById('modEmpRole').value; if(!n || !id || !s || !r) return alert("All fields required."); if(editingEmpInternalId) { let emp = state.employees.find(x => x.internalId === editingEmpInternalId); if(emp) { emp.name = n; emp.sector = s; emp.role = r; } } else { if (state.employees.some(x => x.id === id)) return alert(`ID exists.`); state.employees.push({internalId: Date.now(), id: id, name: n, sector: s, role: r}); } broadcastState(); closeModal(); }
 
         let editingToppingId = null; let editingToppingLinks = [];
-        function openToppingModal(id = null) { editingToppingId = id; let t = id ? state.toppings.find(x => x.id === id) : {name:'', price:0, link:['All']}; editingToppingLinks = Array.isArray(t.link) ? [...t.link] : [t.link]; renderToppingModalInternal(); }
-        function renderToppingModalInternal() {
-            let tName = document.getElementById('modTopName') ? document.getElementById('modTopName').value : (editingToppingId ? state.toppings.find(x=>x.id===editingToppingId).name : '');
-            let tPrice = document.getElementById('modTopPrice') ? document.getElementById('modTopPrice').value : (editingToppingId ? state.toppings.find(x=>x.id===editingToppingId).price : 0);
+        function openToppingModal(id = null) { 
+            editingToppingId = id; 
+            let t = id ? state.toppings.find(x => x.id === id) : {name:'', price:0, link:['All']}; 
+            editingToppingLinks = Array.isArray(t.link) ? [...t.link] : [t.link]; 
+            renderToppingModalInternal(true); 
+        }
+        
+        function renderToppingModalInternal(isFreshLoad = false) {
+            let tName = '';
+            let tPrice = 0;
+            
+            if (isFreshLoad) {
+                tName = editingToppingId ? state.toppings.find(x=>x.id===editingToppingId).name : '';
+                tPrice = editingToppingId ? state.toppings.find(x=>x.id===editingToppingId).price : 0;
+            } else {
+                tName = document.getElementById('modTopName') ? document.getElementById('modTopName').value : '';
+                tPrice = document.getElementById('modTopPrice') ? document.getElementById('modTopPrice').value : 0;
+            }
+
             let chips = `<div class="topping-chip ${editingToppingLinks.includes('All') ? 'active' : ''}" onclick="toggleTopLink('All')">Global</div>`;
             state.categories.forEach(c => { chips += `<div class="topping-chip ${editingToppingLinks.includes('cat-'+c) ? 'active' : ''}" onclick="toggleTopLink('cat-${c}')">Cat: ${c}</div>`; });
             state.menuItems.forEach(m => { chips += `<div class="topping-chip ${editingToppingLinks.includes(m.id.toString()) ? 'active' : ''}" onclick="toggleTopLink('${m.id}')">${m.name}</div>`; });
             openModal(`<div class="modal-content modal-mini"><h2>${editingToppingId?'Edit Modifier':'New Modifier'}</h2><div style="display:flex; flex-direction:column; gap:15px; margin-top:15px;"><input type="text" id="modTopName" value="${tName}" placeholder="Name" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;"><input type="number" id="modTopPrice" value="${tPrice}" placeholder="Extra Price" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;"><div style="margin-top:10px; max-height:200px; overflow-y:auto; padding-bottom:10px; border:1px solid var(--border); padding:10px; border-radius:12px;">${chips}</div><button class="submit-btn-large" onclick="saveToppingModal()">SAVE</button><button onclick="closeModal()" style="background:transparent; color:var(--accent); border:none; margin-top:10px;">CANCEL</button></div></div>`);
         }
-        function toggleTopLink(val) { if (val === 'All') { editingToppingLinks = ['All']; } else { editingToppingLinks = editingToppingLinks.filter(x => x !== 'All'); if (editingToppingLinks.includes(val.toString())) { editingToppingLinks = editingToppingLinks.filter(x => x !== val.toString()); } else { editingToppingLinks.push(val.toString()); } if (editingToppingLinks.length === 0) editingToppingLinks = ['All']; } renderToppingModalInternal(); }
+        
+        function toggleTopLink(val) { 
+            if (val === 'All') { 
+                editingToppingLinks = ['All']; 
+            } else { 
+                editingToppingLinks = editingToppingLinks.filter(x => x !== 'All'); 
+                if (editingToppingLinks.includes(val.toString())) { 
+                    editingToppingLinks = editingToppingLinks.filter(x => x !== val.toString()); 
+                } else { 
+                    editingToppingLinks.push(val.toString()); 
+                } 
+                if (editingToppingLinks.length === 0) editingToppingLinks = ['All']; 
+            } 
+            renderToppingModalInternal(false); 
+        }
+        
         function saveToppingModal() { let n = document.getElementById('modTopName').value.trim(), p = parseFloat(document.getElementById('modTopPrice').value); if(!n || isNaN(p)) return alert("Validation Failure."); if(editingToppingId) { let t = state.toppings.find(x => x.id === editingToppingId); if(t) { t.name = n; t.price = p; t.link = [...editingToppingLinks]; } } else { state.toppings.push({id: Date.now(), name:n, price:p, link:[...editingToppingLinks]}); } broadcastState(); closeModal(); }
 
         function formatTime(timestamp) { if (!timestamp) return 'N/A'; return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
@@ -963,7 +1038,7 @@
             state.employees.forEach(e => { csvContent += `Employee,${e.id},${e.name.replace(/,/g, ' ')},${e.sector},${e.role},\n`; });
             csvContent += `System_PINs,AdminPIN:${state.adminPin},ManagerPIN:${state.managerPin},,,,\n`;
             state.orders.forEach(o => { let safeTime = formatTime(o.timestamp).replace(/,/g, ''); csvContent += `Order,${o.internalId || o.id},Total:${o.total},Cost:${o.totalCost || 0},Cashier:${o.cashier},${safeTime}\n`; });
-            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "reat_backup_v1_5.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "reat_backup_v1_6.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
 
         function importCSV(event) {
@@ -1071,14 +1146,26 @@
             
             // Analytics Calculation Engine
             let tRev = 0, tTips = 0, tOrd = 0, tProf = 0, iAnly = {}, cashierStats = {};
-            let readyOrdersHtml = ''; document.getElementById('kitchenGrid').innerHTML = ''; 
+            let readyPickupHtml = ''; let readyDeliveryHtml = ''; 
+            document.getElementById('kitchenGrid').innerHTML = ''; 
             
             state.orders.forEach(o => {
                 const conf = {'Pending':{n:'Received',b:'Accept',c:'var(--warning)'}, 'Received':{n:'Preparing',b:'Start',c:'var(--primary)'}, 'Preparing':{n:'Prepared',b:'Ready',c:'var(--primary)'}, 'Prepared':{n:'Collected',b:'Archive',c:'var(--success)'}}[o.status];
+                
+                let cardAddressText = (o.orderType === 'Delivery' && o.tableNumber && o.tableNumber !== 'N/A') ? `<div style="font-size:0.85rem; color:var(--warning); margin-bottom:5px; font-weight:700;">📍 ${o.tableNumber}</div>` : '';
+
                 if(conf) {
-                    const html = `<div class="order-card" style="border-left-color:${conf.c}"><div class="card-header"><span style="font-weight:800; font-size:1.3rem;">#${o.id}</span><span class="status-pill" style="color:${conf.c}; background:rgba(0,0,0,0.2); border-color:${conf.c};">${o.status}</span></div><div style="font-size:0.85rem; color:var(--text-dim); margin-bottom:5px; font-weight:600;">Type: ${o.orderType || 'Takeaway'}</div><div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:12px;">🕒 Sent at: ${formatTime(o.timestamp)}</div><div style="margin: 16px 0;">${o.items.map(i=>`<div class="order-item-row"><b style="color:var(--text-main); font-size:1.05rem;">${i.qty}x</b> ${i.name}${i.toppings.length ? `<br><small style="color:var(--warning); font-weight:600;">+ ${i.toppings.join(', ')}</small>` : ''}</div>`).join('')}</div><div class="card-actions">${conf.n?`<button class="btn-status" onclick="updateOrderStatus(${o.internalId || o.id}, '${conf.n}')">${conf.b}</button>`:''}<button class="btn-cancel" onclick="updateOrderStatus(${o.internalId || o.id}, 'Cancelled')">Void</button></div></div>`;
-                    if(['Pending','Received','Preparing'].includes(o.status)) document.getElementById('kitchenGrid').innerHTML += html;
-                    else if(o.status === 'Prepared') { readyOrdersHtml += `<div class="order-card" style="border-left-color:var(--success); background: rgba(16, 185, 129, 0.03); padding: 18px; margin-bottom:12px; border-radius:20px;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><span style="font-weight:800; font-size:1.4rem; color:var(--success);">#${o.id}</span><span class="status-pill" style="color:var(--success); background:rgba(16,185,129,0.1); border-color:var(--success);">READY</span></div><div style="font-size:0.85rem; color:var(--text-dim); margin-bottom:5px;">Type: ${o.orderType || 'Takeaway'}</div><div style="font-size:0.95rem; margin-bottom:18px; color:var(--text-main); font-weight:500;">${o.items.map(i=>`${i.qty}x ${i.name}`).join(', ')}</div><button class="submit-btn-large" style="background:var(--success); margin:0; padding:12px; height:auto; box-shadow:none;" onclick="updateOrderStatus(${o.internalId || o.id}, 'Collected')">LOG HANDOVER</button></div>`; }
+                    const html = `<div class="order-card" style="border-left-color:${conf.c}"><div class="card-header"><span style="font-weight:800; font-size:1.3rem;">#${o.id}</span><span class="status-pill" style="color:${conf.c}; background:rgba(0,0,0,0.2); border-color:${conf.c};">${o.status}</span></div><div style="font-size:0.85rem; color:var(--text-dim); margin-bottom:5px; font-weight:600;">Type: ${o.orderType || 'Takeaway'}</div>${cardAddressText}<div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:12px;">🕒 Sent at: ${formatTime(o.timestamp)}</div><div style="margin: 16px 0;">${o.items.map(i=>`<div class="order-item-row"><b style="color:var(--text-main); font-size:1.05rem;">${i.qty}x</b> ${i.name}${i.toppings.length ? `<br><small style="color:var(--warning); font-weight:600;">+ ${i.toppings.join(', ')}</small>` : ''}</div>`).join('')}</div><div class="card-actions">${conf.n?`<button class="btn-status" onclick="updateOrderStatus(${o.internalId || o.id}, '${conf.n}')">${conf.b}</button>`:''}<button class="btn-cancel" onclick="updateOrderStatus(${o.internalId || o.id}, 'Cancelled')">Void</button></div></div>`;
+                    
+                    if(['Pending','Received','Preparing'].includes(o.status)) {
+                        document.getElementById('kitchenGrid').innerHTML += html;
+                    }
+                    else if(o.status === 'Prepared') { 
+                        let rHtml = `<div class="order-card" style="border-left-color:var(--success); background: rgba(16, 185, 129, 0.03); padding: 18px; margin-bottom:12px; border-radius:20px;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><span style="font-weight:800; font-size:1.4rem; color:var(--success);">#${o.id}</span><span class="status-pill" style="color:var(--success); background:rgba(16,185,129,0.1); border-color:var(--success);">READY</span></div><div style="font-size:0.85rem; color:var(--text-dim); margin-bottom:5px;">Type: ${o.orderType || 'Takeaway'}</div>${cardAddressText}<div style="font-size:0.95rem; margin-bottom:18px; color:var(--text-main); font-weight:500;">${o.items.map(i=>`${i.qty}x ${i.name}`).join(', ')}</div><button class="submit-btn-large" style="background:var(--success); margin:0; padding:12px; height:auto; box-shadow:none;" onclick="updateOrderStatus(${o.internalId || o.id}, 'Collected')">${o.orderType === 'Delivery' ? 'DISPATCH DELIVERY' : 'LOG HANDOVER'}</button></div>`; 
+                        
+                        if (o.orderType === 'Delivery') { readyDeliveryHtml += rHtml; } 
+                        else { readyPickupHtml += rHtml; }
+                    }
                 }
                 if(o.status === 'Collected') {
                     tRev += o.subtotal; tTips += o.tip; tOrd++; tProf += (o.subtotal - (o.totalCost || 0));
@@ -1087,7 +1174,8 @@
                 }
             });
             
-            document.getElementById('completedOrdersGrid').innerHTML = readyOrdersHtml || `<div style="text-align:center; padding: 24px; color:var(--text-dim); border: 2px dashed var(--border); border-radius: 16px; font-weight:600; font-size:0.9rem;">Counter Clear.</div>`;
+            document.getElementById('completedOrdersGrid').innerHTML = readyPickupHtml || `<div style="text-align:center; padding: 24px; color:var(--text-dim); border: 2px dashed var(--border); border-radius: 16px; font-weight:600; font-size:0.9rem;">Counter Clear.</div>`;
+            document.getElementById('completedDeliveryGrid').innerHTML = readyDeliveryHtml || `<div style="text-align:center; padding: 24px; color:var(--text-dim); border: 2px dashed var(--border); border-radius: 16px; font-weight:600; font-size:0.9rem;">No Pending Deliveries.</div>`;
             
             // Populating Stat Cards
             document.getElementById('statTotalRevenue').innerText = tRev; 
