@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>REat - V1.7</title>
+    <title>REat - V2.0</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
@@ -38,7 +38,7 @@
 
         /* --- CUSTOMER MENU STYLES --- */
         #customer-menu-view { flex-direction: column; height: 100%; overflow: hidden; background: var(--bg-deep); }
-        .cust-nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 30px; background: var(--bg-surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+        .cust-nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 30px; background: var(--bg-surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; flex-wrap: wrap; gap: 14px;}
         .cust-body { display: block; padding: 24px; height: calc(100vh - 80px); overflow-y: auto; max-width: 1400px; margin: 0 auto; width: 100%; padding-bottom: 120px; }
         .cust-menu-scroll { height: auto; overflow: visible; padding-bottom: 0; }
         
@@ -169,9 +169,22 @@
 </head>
 <body>
 
+    <!-- GLOBALLY ACCESSIBLE ORDER HISTORY OVERLAY -->
+    <div class="cart-modal-overlay" id="ordersModalOverlay">
+        <div class="cust-cart-panel" style="max-width: 600px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+                <h3 style="margin:0;">Order History & Live Status</h3>
+                <button onclick="toggleOrdersModal()" style="background:transparent; border:none; color:var(--text-dim); font-size:1.5rem; cursor:pointer;">✕</button>
+            </div>
+            <div id="custOrdersList" style="flex:1; overflow-y:auto; min-height: 250px; max-height: 60vh;">
+                <!-- Dynamically Populated Order History -->
+            </div>
+        </div>
+    </div>
+
     <!-- CUSTOMER HUB -->
     <div id="customer-hub" class="screen-overlay">
-        <h1 style="font-size: 4rem; font-weight: 800; letter-spacing: -2px; margin-bottom: 5px;">REat <span style="color:var(--primary); font-size: 1.5rem; vertical-align: middle;">V1.7</span></h1>
+        <h1 style="font-size: 4rem; font-weight: 800; letter-spacing: -2px; margin-bottom: 5px;">REat <span style="color:var(--primary); font-size: 1.5rem; vertical-align: middle;">V1.8</span></h1>
         <p style="color: var(--text-dim); font-size: 1.1rem; max-width: 400px; margin-bottom: 20px;">Premium Local Ordering</p>
         
         <div class="hub-search-box">
@@ -187,7 +200,10 @@
             <p id="hubStatusText" style="color:var(--warning); margin-top: 25px; font-weight:600; display:none;"></p>
         </div>
         
-        <button onclick="window.location.href = 'store.html'" style="margin-top:auto; margin-bottom: 20px; background:transparent; border:1px solid var(--border); color:var(--text-dim); padding: 10px 20px; border-radius: 12px; cursor:pointer; font-weight:600;">Switch to Staff POS (store.html)</button>
+        <div style="margin-top:auto; margin-bottom: 20px; display:flex; flex-direction:column; gap:14px; align-items:center;">
+            <button onclick="toggleOrdersModal()" style="background:transparent; border:none; color:var(--primary); padding: 10px; cursor:pointer; font-weight:700; font-size:1.05rem;">🧾 View Past Orders</button>
+            <button onclick="window.location.href = 'store.html'" style="background:transparent; border:1px solid var(--border); color:var(--text-dim); padding: 10px 20px; border-radius: 12px; cursor:pointer; font-weight:600;">Switch to Staff POS (store.html)</button>
+        </div>
     </div>
 
     <!-- CUSTOMER MENU -->
@@ -201,6 +217,7 @@
                 </div>
             </div>
             <div style="display:flex; gap:10px; align-items:center;">
+                <button class="btn-status" style="padding: 8px 16px; border-radius: 10px; font-size: 0.85rem; background: transparent; border: 1px solid var(--primary); color: var(--primary);" onclick="toggleOrdersModal()">🧾 Orders</button>
                 <button class="btn-status" id="navCartBtn" style="padding: 8px 16px; border-radius: 10px; font-size: 0.85rem; display:none;" onclick="toggleCartModal()">Cart (0)</button>
                 <button class="btn-cancel" style="padding: 8px 16px; border-radius: 10px; font-size: 0.85rem;" onclick="disconnectCustomer()">Disconnect</button>
             </div>
@@ -210,7 +227,7 @@
             <div class="cust-menu-scroll" id="custMenuContainer"></div>
         </div>
 
-        <!-- NEW POPUP CART MODAL -->
+        <!-- POPUP CART MODAL -->
         <div class="cart-modal-overlay" id="cartModalOverlay">
             <div class="cust-cart-panel" id="custCartPanelObj">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
@@ -268,7 +285,7 @@
                     <span class="header-status"><span class="lan-indicator offline" id="lanDot"></span>Net ID: <b id="myPeerId" style="color:var(--primary); font-size: 1.05rem;">...</b></span>
                     <div style="display:flex; align-items:center; gap:10px; background:var(--bg-deep); padding: 8px 16px; border-radius: 14px; border:1px solid var(--border);"><span style="font-size:0.8rem; font-weight:700; color:var(--text-dim);">STORE ONLINE</span><input type="checkbox" class="master-switch" id="storeOnlineSwitch" onchange="toggleStoreOnline()"></div>
                 </div>
-                <h1 id="brandHeaderLabel">REat V1.7</h1>
+                <h1 id="brandHeaderLabel">REat V1.8</h1>
                 <div class="header-right">
                     <span class="header-status" id="headerCashierLabel" onclick="promptRegisterUnlock()" style="background: var(--primary); border:none; color:white; box-shadow: 0 4px 15px var(--primary-glow);">Cashier: Sign In ✎</span>
                 </div>
@@ -349,8 +366,11 @@
                     <div class="panel"><h3>Staff Analytics</h3><div class="table-container"><table><thead><tr><th>Cashier Name</th><th>Orders</th><th>Revenue</th><th>Tips</th></tr></thead><tbody id="cashierAnalyticsBody"></tbody></table></div></div>
                     <div class="panel"><h3>Item Performance</h3><div class="table-container"><table><thead><tr><th>Item Name</th><th>Units Sold</th><th>Cost</th><th>Revenue</th><th>Profit</th></tr></thead><tbody id="analyticsTableBody"></tbody></table></div></div>
                 </div>
-                <h2 style="margin: 20px 0; font-weight: 800;">Historical Audit Journal</h2>
-                <div class="table-container"><table><thead><tr><th>Order ID</th><th>Type</th><th>Time</th><th>Items</th><th>Cost</th><th>Paid</th><th>Cashier</th><th>Status</th></tr></thead><tbody id="salesTableBody"></tbody></table></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin: 20px 0;">
+                    <h2 style="margin:0; font-weight: 800;">Historical Audit Journal</h2>
+                    <button class="btn-cancel" style="width:auto; padding: 8px 16px;" onclick="deleteAllOrders()">WIPE ALL ORDERS</button>
+                </div>
+                <div class="table-container"><table><thead><tr><th>Order ID</th><th>Type</th><th>Time</th><th>Items</th><th>Cost</th><th>Paid</th><th>Cashier</th><th>Status</th><th>Actions</th></tr></thead><tbody id="salesTableBody"></tbody></table></div>
             </main>
 
             <main id="menu" class="tab-content">
@@ -420,7 +440,7 @@
     <div id="modalContainer" class="modal-overlay"></div>
 
     <script>
-        // --- SMART ROUTER REat V1.7 ---
+        // --- SMART ROUTER REat V1.8 ---
         let isStoreRoute = false;
         
         document.addEventListener('DOMContentLoaded', () => {
@@ -527,7 +547,10 @@
                     return;
                 }
                 connectedCustomers.push(conn);
-                conn.on('open', () => { conn.send({ type: 'SYNC_MENU', payload: { menu: state.menuItems, cats: state.categories, tops: state.toppings, storeName: state.storeName } }); });
+                conn.on('open', () => { 
+                    let public_orders = state.orders.map(o => ({ id: o.id, status: o.status }));
+                    conn.send({ type: 'SYNC_MENU', payload: { menu: state.menuItems, cats: state.categories, tops: state.toppings, storeName: state.storeName }, public_orders: public_orders }); 
+                });
                 conn.on('data', (data) => {
                     if (data.type === 'NEW_ORDER') {
                         state.orderCounter++;
@@ -637,13 +660,18 @@
                     });
                 }
                 if(connectedCustomers.length > 0) {
+                    let public_orders = state.orders.map(o => ({ id: o.id, status: o.status }));
                     connectedCustomers.forEach(conn => {
                         if(conn.open) {
                             if(!state.isOnline) {
                                 conn.send({ type: 'ERROR', message: 'Restaurant went offline.' });
                                 setTimeout(() => conn.close(), 200);
                             } else {
-                                conn.send({ type: 'SYNC_MENU', payload: { menu: state.menuItems, cats: state.categories, tops: state.toppings, storeName: state.storeName } });
+                                conn.send({ 
+                                    type: 'SYNC_MENU', 
+                                    payload: { menu: state.menuItems, cats: state.categories, tops: state.toppings, storeName: state.storeName },
+                                    public_orders: public_orders
+                                });
                             }
                         }
                     });
@@ -743,8 +771,38 @@
                     document.getElementById('customer-menu-view').classList.add('active');
                     document.getElementById('custOrderConfirmation').innerHTML = ''; 
                     renderCustomerView();
+                    
+                    if (data.public_orders) {
+                        let myOrderHistory = JSON.parse(localStorage.getItem('reat_my_orders')) || [];
+                        let updated = false;
+                        myOrderHistory.forEach(myOrd => {
+                            let found = data.public_orders.find(o => o.id === myOrd.id);
+                            if(found && myOrd.status !== found.status) {
+                                myOrd.status = found.status;
+                                updated = true;
+                            }
+                        });
+                        if (updated) {
+                            localStorage.setItem('reat_my_orders', JSON.stringify(myOrderHistory));
+                            if (document.getElementById('ordersModalOverlay').classList.contains('active')) {
+                                renderMyOrders();
+                            }
+                        }
+                    }
                 }
                 if(data.type === 'ORDER_CONFIRMED') {
+                    let myOrderHistory = JSON.parse(localStorage.getItem('reat_my_orders')) || [];
+                    myOrderHistory.unshift({ 
+                        id: data.orderId, 
+                        storeId: activeConnection.peer, 
+                        storeName: custMenuData.storeName,
+                        date: Date.now(), 
+                        total: window.lastOrderPayload.total, 
+                        items: window.lastOrderPayload.items.map(i=>`${i.qty}x ${i.name}`).join(', '),
+                        status: 'Pending' 
+                    });
+                    localStorage.setItem('reat_my_orders', JSON.stringify(myOrderHistory));
+
                     document.getElementById('custOrderConfirmation').innerHTML = `
                         <div style="background:var(--success); color:white; padding:24px; border-radius:16px; text-align:center; margin-bottom:20px; box-shadow:0 10px 20px rgba(16,185,129,0.2);">
                             <h3 style="margin:0 0 10px 0;">Order Placed Successfully!</h3>
@@ -792,6 +850,37 @@
 
         function toggleCartModal() { 
             document.getElementById('cartModalOverlay').classList.toggle('active'); 
+        }
+        
+        function toggleOrdersModal() {
+            document.getElementById('ordersModalOverlay').classList.toggle('active');
+            if (document.getElementById('ordersModalOverlay').classList.contains('active')) {
+                renderMyOrders();
+            }
+        }
+        
+        function renderMyOrders() {
+            let myOrderHistory = JSON.parse(localStorage.getItem('reat_my_orders')) || [];
+            let html = myOrderHistory.map(o => {
+                let color = 'var(--warning)';
+                if (o.status === 'Preparing') color = 'var(--primary)';
+                if (o.status === 'Prepared') color = 'var(--success)';
+                if (o.status === 'Collected') color = 'var(--text-dim)';
+                if (o.status === 'Cancelled') color = 'var(--accent)';
+
+                return `<div class="cart-item" style="border-left: 4px solid ${color};">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <span style="font-weight:800; font-size:1.1rem;">#${o.id} <span style="font-size:0.8rem; color:var(--text-dim); font-weight:normal;">(${o.storeName})</span></span>
+                        <span class="status-pill" style="color:${color}; background:rgba(255,255,255,0.05); border: 1px solid ${color}; padding: 4px 8px; font-size: 0.7rem;">${o.status}</span>
+                    </div>
+                    <div style="font-size:0.85rem; color:var(--text-main); margin-bottom:8px;">${o.items}</div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-dim);">
+                        <span>${new Date(o.date).toLocaleString()}</span>
+                        <span style="font-weight:bold; color:var(--primary);">₹${o.total}</span>
+                    </div>
+                </div>`;
+            }).join('');
+            document.getElementById('custOrdersList').innerHTML = html || '<p style="color:var(--text-dim); text-align:center; padding:20px;">No recent orders found on this device.</p>';
         }
 
         function renderCustomerView() {
@@ -867,6 +956,7 @@
 
             const orderTotal = custCart.reduce((a,b)=>a+b.totalPrice,0), totalC = custCart.reduce((a,b)=>a+b.totalCost,0);
             const orderPayload = { timestamp: Date.now(), items: [...custCart], subtotal: orderTotal, totalCost: totalC, tip: 0, total: orderTotal, status: 'Pending', cashier: 'Customer App', orderType: custOrderMode, tableNumber: address || 'N/A' };
+            window.lastOrderPayload = orderPayload;
 
             if(activeConnection && activeConnection.open) {
                 activeConnection.send({ type: 'NEW_ORDER', order: orderPayload });
@@ -977,6 +1067,25 @@
         }
 
         function updateOrderStatus(uid, s) { const o = state.orders.find(x => (x.internalId === uid || x.id === uid)); if(o){ o.status = s; broadcastState(); } }
+        
+        function deleteSpecificOrder(uid) {
+            let pin = prompt("Enter Admin PIN to delete this specific order:");
+            if (pin !== state.adminPin) return alert("Access Denied. Admin PIN required.");
+            if (confirm("Permanently delete this order record? This action cannot be undone.")) {
+                state.orders = state.orders.filter(o => (o.internalId !== uid && o.id !== uid));
+                broadcastState();
+            }
+        }
+        
+        function deleteAllOrders() {
+            let pin = prompt("Enter Admin PIN to WIPE ALL ORDERS:");
+            if (pin !== state.adminPin) return alert("Access Denied. Admin PIN required.");
+            if (prompt("Type DELETE to confirm wiping the entire order history:") === "DELETE") {
+                state.orders = [];
+                broadcastState();
+                alert("Order history has been completely wiped.");
+            }
+        }
 
         let editingMenuId = null;
         function openMenuModal(id = null) {
@@ -1050,7 +1159,7 @@
             state.employees.forEach(e => { csvContent += `Employee,${e.id},${e.name.replace(/,/g, ' ')},${e.sector},${e.role},\n`; });
             csvContent += `System_PINs,AdminPIN:${state.adminPin},ManagerPIN:${state.managerPin},,,,\n`;
             state.orders.forEach(o => { let safeTime = formatTime(o.timestamp).replace(/,/g, ''); csvContent += `Order,${o.internalId || o.id},Total:${o.total},Cost:${o.totalCost || 0},Cashier:${o.cashier},${safeTime}\n`; });
-            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "reat_backup_v1_7.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "reat_backup_v1_8.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
 
         function importCSV(event) {
@@ -1202,7 +1311,7 @@
             
             // Populating Tables
             document.getElementById('analyticsTableBody').innerHTML = Object.entries(iAnly).map(([n,d])=>`<tr><td><b>${n}</b></td><td>${d.q}</td><td>₹${d.c}</td><td>₹${d.r}</td><td style="color:var(--success); font-weight:700;">₹${d.p}</td></tr>`).join('');
-            document.getElementById('salesTableBody').innerHTML = [...state.orders].reverse().map(o => `<tr><td>#${o.id}</td><td>${o.orderType || 'Takeaway'}</td><td>${formatTime(o.timestamp)}</td><td>${o.items.length} items</td><td>₹${o.totalCost || 0}</td><td>₹${o.total}</td><td>${o.cashier}</td><td><span style="font-weight:700; font-size:0.8rem; text-transform:uppercase;">${o.status}</span></td></tr>`).join('');
+            document.getElementById('salesTableBody').innerHTML = [...state.orders].reverse().map(o => `<tr><td>#${o.id}</td><td>${o.orderType || 'Takeaway'}</td><td>${formatTime(o.timestamp)}</td><td>${o.items.length} items</td><td>₹${o.totalCost || 0}</td><td>₹${o.total}</td><td>${o.cashier}</td><td><span style="font-weight:700; font-size:0.8rem; text-transform:uppercase;">${o.status}</span></td><td><button class="btn-delete" onclick="deleteSpecificOrder(${o.internalId || o.id})">Del</button></td></tr>`).join('');
             document.getElementById('cashierAnalyticsBody').innerHTML = Object.entries(cashierStats).map(([name, data]) => `<tr><td><b>${name}</b></td><td>${data.orders}</td><td style="color:var(--success); font-weight:700;">₹${data.revenue}</td><td style="color:var(--warning); font-weight:700;">₹${data.tips}</td></tr>`).join('');
         }
         
