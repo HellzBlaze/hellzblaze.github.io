@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>REat - V1.4</title>
+    <title>REat - V1.5</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
@@ -39,8 +39,8 @@
         /* --- CUSTOMER MENU STYLES --- */
         #customer-menu-view { flex-direction: column; height: 100%; overflow: hidden; background: var(--bg-deep); }
         .cust-nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 30px; background: var(--bg-surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
-        .cust-body { display: grid; grid-template-columns: 1fr 400px; gap: 24px; padding: 24px; height: calc(100vh - 80px); overflow: hidden; max-width: 1400px; margin: 0 auto; width: 100%; }
-        .cust-menu-scroll { overflow-y: auto; height: 100%; padding-right: 10px; padding-bottom: 100px; }
+        .cust-body { display: block; padding: 24px; height: calc(100vh - 80px); overflow-y: auto; max-width: 1400px; margin: 0 auto; width: 100%; padding-bottom: 120px; }
+        .cust-menu-scroll { height: auto; overflow: visible; padding-bottom: 0; }
         
         .customer-category h2 { color: var(--text-main); margin: 30px 0 20px 0; font-size: 1.5rem; font-weight: 800; display:flex; align-items:center; gap:10px;}
         .customer-category h2::before { content: ''; width: 6px; height: 24px; background: var(--primary); border-radius: 4px; }
@@ -52,14 +52,16 @@
         .add-btn { background: rgba(255,107,0,0.1); color: var(--primary); border: 1px solid var(--primary); padding: 8px 20px; border-radius: 12px; font-weight: 800; cursor: pointer; text-transform: uppercase; font-size: 0.85rem; margin-top: auto; align-self: flex-start; }
         .add-btn:hover { background: var(--primary); color: white; transform: translateY(-2px); box-shadow: 0 5px 15px var(--primary-glow); }
 
-        .cust-cart-panel { background: var(--bg-surface); border-radius: 24px; border: 1px solid var(--border); padding: 24px; display: flex; flex-direction: column; box-shadow: -10px 0 30px rgba(0,0,0,0.2); }
+        .cart-modal-overlay { position: fixed; inset: 0; background: rgba(3, 5, 11, 0.85); backdrop-filter: blur(16px); z-index: 3000; display: none; justify-content: center; align-items: center; padding: 20px; }
+        .cart-modal-overlay.active { display: flex; }
+        
+        .cust-cart-panel { background: var(--bg-surface); border-radius: 24px; border: 1px solid var(--border); padding: 30px; display: flex; flex-direction: column; box-shadow: 0 30px 70px rgba(0,0,0,0.6); width: 100%; max-width: 500px; max-height: 90vh; }
         .toggle-switch { display: flex; background: var(--bg-deep); border-radius: 12px; padding: 4px; margin-bottom: 16px; border: 1px solid var(--border); }
         .toggle-btn { flex: 1; padding: 10px; border-radius: 10px; border: none; background: transparent; color: var(--text-dim); font-weight: 700; cursor: pointer; }
         .toggle-btn.active { background: var(--primary); color: white; }
 
         .mobile-cart-fab { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 16px 32px; border-radius: 30px; font-weight: 800; box-shadow: 0 10px 30px var(--primary-glow); z-index: 500; cursor: pointer; align-items: center; gap: 10px; width: 90%; max-width: 400px; justify-content: space-between; border: none; font-size: 1.05rem;}
         .mobile-cart-fab:active { transform: translateX(-50%) scale(0.95); }
-        .close-cart-btn { display: none; background: transparent; border: none; color: var(--text-main); font-size: 1.5rem; cursor: pointer; margin-bottom: 20px;}
 
         /* --- STAFF APP STYLES --- */
         #staff-app { display: none; flex: 1; flex-direction: column; overflow: hidden; width: 100%; height: 100%; }
@@ -99,7 +101,7 @@
         .submit-btn-large:hover { transform: translateY(-2px); box-shadow: 0 12px 30px var(--primary-glow); }
         .btn-status { background: var(--primary); border: none; padding: 14px; border-radius: 14px; color: white; font-weight: 700; cursor: pointer; width: 100%;}
         .btn-cancel { background: transparent; border: 1.5px solid var(--accent); color: var(--accent); padding: 14px; border-radius: 14px; font-weight: 700; cursor: pointer;}
-        .btn-edit { background: transparent; border: 1.5px solid var(--primary); color: var(--primary); padding: 6px 14px; border-radius: 10px; font-weight: 600; cursor: margin-right: 6px; }
+        .btn-edit { background: transparent; border: 1.5px solid var(--primary); color: var(--primary); padding: 6px 14px; border-radius: 10px; font-weight: 600; cursor: pointer; margin-right: 6px; }
         .btn-delete { background: transparent; border: 1.5px solid var(--accent); color: var(--accent); padding: 6px 14px; border-radius: 10px; font-weight: 600; cursor: pointer; }
 
         .cart-items-container { flex: 1; margin: 16px 0; overflow-y: auto; padding-right: 6px; min-height: 250px; }
@@ -141,12 +143,7 @@
 
         @media (max-width: 1024px) { 
             #register-layout { grid-template-columns: 1fr; } 
-            .cust-body { grid-template-columns: 1fr; overflow-y: visible; height: auto; padding-bottom: 120px;}
-            .cust-menu-scroll { overflow-y: visible; padding-bottom: 0;}
-            .cust-cart-panel { position: fixed; bottom: 0; left: 0; right: 0; height: 85vh; transform: translateY(100%); z-index: 2500; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 30px 30px 0 0; }
-            .cust-cart-panel.active { transform: translateY(0); }
             .mobile-cart-fab { display: flex; }
-            .close-cart-btn { display: block; }
         }
         @media (max-width: 768px) {
             header { flex-direction: column; gap: 14px; padding: 20px; }
@@ -162,7 +159,7 @@
 
     <!-- CUSTOMER HUB -->
     <div id="customer-hub" class="screen-overlay">
-        <h1 style="font-size: 4rem; font-weight: 800; letter-spacing: -2px; margin-bottom: 5px;">REat <span style="color:var(--primary); font-size: 1.5rem; vertical-align: middle;">V1.4</span></h1>
+        <h1 style="font-size: 4rem; font-weight: 800; letter-spacing: -2px; margin-bottom: 5px;">REat <span style="color:var(--primary); font-size: 1.5rem; vertical-align: middle;">V1.5</span></h1>
         <p style="color: var(--text-dim); font-size: 1.1rem; max-width: 400px; margin-bottom: 20px;">Premium Local Ordering</p>
         
         <div class="hub-search-box">
@@ -191,31 +188,42 @@
                     <span style="font-size: 0.8rem; font-weight:700; color:var(--success);">LIVE</span>
                 </div>
             </div>
-            <div>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <button class="btn-status" id="navCartBtn" style="padding: 8px 16px; border-radius: 10px; font-size: 0.85rem; display:none;" onclick="toggleCartModal()">Cart (0)</button>
                 <button class="btn-cancel" style="padding: 8px 16px; border-radius: 10px; font-size: 0.85rem;" onclick="disconnectCustomer()">Disconnect</button>
             </div>
         </div>
         
         <div class="cust-body">
             <div class="cust-menu-scroll" id="custMenuContainer"></div>
-            
+        </div>
+
+        <!-- NEW POPUP CART MODAL -->
+        <div class="cart-modal-overlay" id="cartModalOverlay">
             <div class="cust-cart-panel" id="custCartPanelObj">
-                <button class="close-cart-btn" onclick="toggleMobileCart()">↓</button>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+                    <h3 style="margin:0;">Your Order</h3>
+                    <button onclick="toggleCartModal()" style="background:transparent; border:none; color:var(--text-dim); font-size:1.5rem; cursor:pointer;">✕</button>
+                </div>
+                
                 <div id="custOrderConfirmation"></div>
-                <h3 style="margin-bottom: 16px;">Your Order</h3>
+                
                 <div class="toggle-switch">
                     <button class="toggle-btn active" id="btnTakeaway" onclick="setOrderType('Takeaway')">Takeaway</button>
                     <button class="toggle-btn" id="btnDineIn" onclick="setOrderType('Dine-in')">Dine-in</button>
+                    <button class="toggle-btn" id="btnDelivery" onclick="setOrderType('Delivery')">Delivery</button>
                 </div>
                 
-                <div class="cart-items-container" id="custCartList" style="min-height: 150px;"></div>
+                <div class="cart-items-container" id="custCartList" style="min-height: 150px; flex:1; overflow-y:auto;"></div>
                 
-                <div class="cart-totals" style="margin-top:auto;"><div class="total-row"><span>Total Due</span><span style="color:var(--primary); font-size:1.5rem; font-weight:800;">₹<span id="custCartTotal">0</span></span></div></div>
+                <div class="cart-totals" style="margin-top:auto;">
+                    <div class="total-row"><span>Total Due</span><span style="color:var(--primary); font-size:1.5rem; font-weight:800;">₹<span id="custCartTotal">0</span></span></div>
+                </div>
                 <button class="submit-btn-large" onclick="submitCustomerOrder()">PLACE SECURE ORDER</button>
             </div>
         </div>
 
-        <button class="mobile-cart-fab" id="mobileCartFabBtn" onclick="toggleMobileCart()">
+        <button class="mobile-cart-fab" id="mobileCartFabBtn" onclick="toggleCartModal()">
             <div style="display:flex; align-items:center; gap:8px;">
                 <span style="background:rgba(0,0,0,0.2); padding:4px 10px; border-radius:12px;" id="mobileCartQty">0 ITEMS</span> 
                 <span>|</span> 
@@ -244,7 +252,7 @@
                     <span class="header-status"><span class="lan-indicator offline" id="lanDot"></span>Net ID: <b id="myPeerId" style="color:var(--primary); font-size: 1.05rem;">...</b></span>
                     <div style="display:flex; align-items:center; gap:10px; background:var(--bg-deep); padding: 8px 16px; border-radius: 14px; border:1px solid var(--border);"><span style="font-size:0.8rem; font-weight:700; color:var(--text-dim);">STORE ONLINE</span><input type="checkbox" class="master-switch" id="storeOnlineSwitch" onchange="toggleStoreOnline()"></div>
                 </div>
-                <h1 id="brandHeaderLabel">REat V1.4</h1>
+                <h1 id="brandHeaderLabel">REat V1.5</h1>
                 <div style="width: 320px; text-align: right; display: flex; justify-content: flex-end; gap: 12px; align-items: center;"><span class="header-status" id="headerCashierLabel" onclick="promptRegisterUnlock()" style="background: var(--primary); border:none; color:white; box-shadow: 0 4px 15px var(--primary-glow);">Cashier: Sign In ✎</span></div>
             </header>
 
@@ -266,6 +274,7 @@
                         <div class="toggle-switch" style="margin-top:10px;">
                             <button class="toggle-btn active" id="posBtnTakeaway" onclick="setPosOrderType('Takeaway')">Takeaway</button>
                             <button class="toggle-btn" id="posBtnDineIn" onclick="setPosOrderType('Dine-in')">Dine-in</button>
+                            <button class="toggle-btn" id="posBtnDelivery" onclick="setPosOrderType('Delivery')">Delivery</button>
                         </div>
                         <div class="cart-items-container" id="cartItemsList"></div>
                         <div class="cart-totals">
@@ -374,7 +383,7 @@
     <div id="modalContainer" class="modal-overlay"></div>
 
     <script>
-        // --- SMART ROUTER REat V1.4 ---
+        // --- SMART ROUTER REat V1.5 ---
         let isStoreRoute = false;
         
         document.addEventListener('DOMContentLoaded', () => {
@@ -646,7 +655,7 @@
                 
                 let pingTimeout = setTimeout(() => { 
                     if(!isDone) { isDone = true; pingConn.close(); checkDone(); } 
-                }, 6000); // Increased timeout to allow proper WebRTC negotiation on public PeerJS servers
+                }, 6000);
 
                 pingConn.on('data', (data) => {
                     if(isDone) return;
@@ -704,7 +713,7 @@
                             <p style="margin:10px 0 0 0; font-size:0.95rem;">Please present this number when collecting your order.</p>
                         </div>
                     `;
-                    toggleMobileCart(); 
+                    document.getElementById('cartModalOverlay').classList.add('active'); 
                 }
             });
             activeConnection.on('error', () => { triggerDisconnectFail(); });
@@ -718,16 +727,31 @@
             }
         }
 
-        function disconnectCustomer() { if(activeConnection) activeConnection.close(); custCart = []; document.getElementById('customer-menu-view').classList.remove('active'); document.getElementById('customer-hub').classList.add('active'); document.getElementById('hubStatusText').style.display = 'none'; document.getElementById('custOrderConfirmation').innerHTML = ''; updateCustCartUI(); }
+        function disconnectCustomer() { 
+            if(activeConnection) activeConnection.close(); 
+            custCart = []; 
+            document.getElementById('customer-menu-view').classList.remove('active'); 
+            document.getElementById('customer-hub').classList.add('active'); 
+            document.getElementById('hubStatusText').style.display = 'none'; 
+            document.getElementById('custOrderConfirmation').innerHTML = ''; 
+            document.getElementById('cartModalOverlay').classList.remove('active');
+            updateCustCartUI(); 
+        }
 
         function setOrderType(type) {
             custOrderMode = type;
-            document.getElementById('btnTakeaway').classList.remove('active'); document.getElementById('btnDineIn').classList.remove('active');
+            document.getElementById('btnTakeaway').classList.remove('active'); 
+            document.getElementById('btnDineIn').classList.remove('active');
+            document.getElementById('btnDelivery').classList.remove('active');
+            
             if(type === 'Takeaway') { document.getElementById('btnTakeaway').classList.add('active'); } 
-            else { document.getElementById('btnDineIn').classList.add('active'); }
+            else if (type === 'Dine-in') { document.getElementById('btnDineIn').classList.add('active'); }
+            else { document.getElementById('btnDelivery').classList.add('active'); }
         }
 
-        function toggleMobileCart() { document.getElementById('custCartPanelObj').classList.toggle('active'); }
+        function toggleCartModal() { 
+            document.getElementById('cartModalOverlay').classList.toggle('active'); 
+        }
 
         function renderCustomerView() {
             let html = '';
@@ -780,8 +804,15 @@
             document.getElementById('mobileCartTotalFab').innerText = s;
             document.getElementById('mobileCartQty').innerText = count + (count === 1 ? ' ITEM' : ' ITEMS');
             
-            if(count > 0) { document.getElementById('mobileCartFabBtn').style.display = 'flex'; } 
-            else { document.getElementById('mobileCartFabBtn').style.display = 'none'; document.getElementById('custCartPanelObj').classList.remove('active'); }
+            let navCartBtn = document.getElementById('navCartBtn');
+            if(count > 0) { 
+                document.getElementById('mobileCartFabBtn').style.display = 'flex'; 
+                if(navCartBtn) { navCartBtn.style.display = 'block'; navCartBtn.innerText = `Cart (${count})`; }
+            } else { 
+                document.getElementById('mobileCartFabBtn').style.display = 'none'; 
+                if(navCartBtn) navCartBtn.style.display = 'none'; 
+                document.getElementById('cartModalOverlay').classList.remove('active'); 
+            }
         }
 
         function submitCustomerOrder() {
@@ -827,9 +858,14 @@
         }
 
         function setPosOrderType(type) {
-            posOrderMode = type; document.getElementById('posBtnTakeaway').classList.remove('active'); document.getElementById('posBtnDineIn').classList.remove('active');
+            posOrderMode = type; 
+            document.getElementById('posBtnTakeaway').classList.remove('active'); 
+            document.getElementById('posBtnDineIn').classList.remove('active');
+            document.getElementById('posBtnDelivery').classList.remove('active');
+            
             if(type === 'Takeaway') { document.getElementById('posBtnTakeaway').classList.add('active'); } 
-            else { document.getElementById('posBtnDineIn').classList.add('active'); }
+            else if (type === 'Dine-in') { document.getElementById('posBtnDineIn').classList.add('active'); }
+            else { document.getElementById('posBtnDelivery').classList.add('active'); }
         }
 
         function openModal(html) { const c = document.getElementById('modalContainer'); c.innerHTML = html; c.classList.add('active'); }
@@ -927,7 +963,7 @@
             state.employees.forEach(e => { csvContent += `Employee,${e.id},${e.name.replace(/,/g, ' ')},${e.sector},${e.role},\n`; });
             csvContent += `System_PINs,AdminPIN:${state.adminPin},ManagerPIN:${state.managerPin},,,,\n`;
             state.orders.forEach(o => { let safeTime = formatTime(o.timestamp).replace(/,/g, ''); csvContent += `Order,${o.internalId || o.id},Total:${o.total},Cost:${o.totalCost || 0},Cashier:${o.cashier},${safeTime}\n`; });
-            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "reat_backup_v1_4.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "reat_backup_v1_5.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
 
         function importCSV(event) {
@@ -949,7 +985,6 @@
         function changePin(type) { const old = prompt(`Provide Current PIN:`), nw = prompt("New PIN (min 4 digits):"); if(old === state[type+'Pin'] && nw?.length >= 4) { state[type+'Pin'] = nw; broadcastState(); alert("PIN Updated."); } }
         function wipeHistory() { if(prompt("Type DELETE to execute override:") === "DELETE") { state = { storeName: "My Restaurant", syncCode: Math.floor(10000 + Math.random() * 90000).toString(), categories: ['Mains'], menuItems: [], toppings: [], employees: [], orders: [], orderCounter: 100, adminPin: '1234', managerPin: '5678', activeCashier: 'Unassigned' }; broadcastState(); alert("System wiped."); } }
         function startNewDay() { if(confirm("Reset ticket counter to #1?")) { state.orderCounter = 0; broadcastState(); alert("Counter reset."); } }
-
 
         // --- RENDER ALL (UI Refresh) ---
         function renderAll() {
