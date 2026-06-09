@@ -169,7 +169,6 @@
 </head>
 <body>
 
-    <!-- GLOBALLY ACCESSIBLE ORDER HISTORY OVERLAY -->
     <div class="cart-modal-overlay" id="ordersModalOverlay">
         <div class="cust-cart-panel" style="max-width: 600px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
@@ -177,14 +176,12 @@
                 <button onclick="toggleOrdersModal()" style="background:transparent; border:none; color:var(--text-dim); font-size:1.5rem; cursor:pointer;">✕</button>
             </div>
             <div id="custOrdersList" style="flex:1; overflow-y:auto; min-height: 250px; max-height: 60vh;">
-                <!-- Dynamically Populated Order History -->
-            </div>
+                </div>
         </div>
     </div>
 
-    <!-- CUSTOMER HUB -->
     <div id="customer-hub" class="screen-overlay">
-        <h1 style="font-size: 4rem; font-weight: 800; letter-spacing: -2px; margin-bottom: 5px;">REat <span style="color:var(--primary); font-size: 1.5rem; vertical-align: middle;">V1.8</span></h1>
+        <h1 style="font-size: 4rem; font-weight: 800; letter-spacing: -2px; margin-bottom: 5px;">REat <span style="color:var(--primary); font-size: 1.5rem; vertical-align: middle;">V2.0</span></h1>
         <p style="color: var(--text-dim); font-size: 1.1rem; max-width: 400px; margin-bottom: 20px;">Premium Local Ordering</p>
         
         <div class="hub-search-box">
@@ -206,7 +203,6 @@
         </div>
     </div>
 
-    <!-- CUSTOMER MENU -->
     <div id="customer-menu-view" class="screen-overlay">
         <div class="cust-nav">
             <div style="display:flex; flex-direction:column;">
@@ -227,7 +223,6 @@
             <div class="cust-menu-scroll" id="custMenuContainer"></div>
         </div>
 
-        <!-- POPUP CART MODAL -->
         <div class="cart-modal-overlay" id="cartModalOverlay">
             <div class="cust-cart-panel" id="custCartPanelObj">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
@@ -266,7 +261,6 @@
         </button>
     </div>
 
-    <!-- STAFF APP -->
     <div id="staff-app-container" class="screen-overlay">
         <div id="staff-login-gate" style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; width:100%; background:var(--bg-deep); z-index:3000;">
             <div class="panel" style="width: 100%; max-width: 450px; text-align:center; padding: 40px;">
@@ -285,7 +279,7 @@
                     <span class="header-status"><span class="lan-indicator offline" id="lanDot"></span>Net ID: <b id="myPeerId" style="color:var(--primary); font-size: 1.05rem;">...</b></span>
                     <div style="display:flex; align-items:center; gap:10px; background:var(--bg-deep); padding: 8px 16px; border-radius: 14px; border:1px solid var(--border);"><span style="font-size:0.8rem; font-weight:700; color:var(--text-dim);">STORE ONLINE</span><input type="checkbox" class="master-switch" id="storeOnlineSwitch" onchange="toggleStoreOnline()"></div>
                 </div>
-                <h1 id="brandHeaderLabel">REat V1.8</h1>
+                <h1 id="brandHeaderLabel">REat V2.0</h1>
                 <div class="header-right">
                     <span class="header-status" id="headerCashierLabel" onclick="promptRegisterUnlock()" style="background: var(--primary); border:none; color:white; box-shadow: 0 4px 15px var(--primary-glow);">Cashier: Sign In ✎</span>
                 </div>
@@ -348,6 +342,9 @@
             <main id="delivery" class="tab-content">
                 <h2 style="margin-bottom: 24px; font-weight: 800;">DELIVERY DISPATCH CENTER</h2>
                 
+                <h3 style="margin-bottom: 16px; color: var(--warning);">Out for Delivery</h3>
+                <div class="order-grid" id="outDeliveryGrid" style="margin-bottom: 40px;"></div>
+
                 <h3 style="margin-bottom: 16px; color: var(--text-main);">Ready for Dispatch</h3>
                 <div class="order-grid" id="completedDeliveryGrid" style="margin-bottom: 40px;"></div>
                 
@@ -407,8 +404,7 @@
                     </div>
 
                     <div class="panel" id="syncStatusUI">
-                        <!-- Dynamic Sync Control Core Panel -->
-                    </div>
+                        </div>
                     
                     <div class="panel">
                         <h3 style="margin-bottom: 16px;">System Connections & Vault Data</h3>
@@ -436,11 +432,10 @@
         </div>
     </div>
 
-    <!-- MODAL CONTAINER -->
     <div id="modalContainer" class="modal-overlay"></div>
 
     <script>
-        // --- SMART ROUTER REat V1.8 ---
+        // --- SMART ROUTER REat V2.0 ---
         let isStoreRoute = false;
         
         document.addEventListener('DOMContentLoaded', () => {
@@ -500,16 +495,14 @@
             });
             
             staffSyncPeer.on('connection', (conn) => {
-                let existing = connectedSideTerminals.find(c => c.peer === conn.peer);
-                if (existing) { existing.close(); }
                 connectedSideTerminals = connectedSideTerminals.filter(c => c.peer !== conn.peer);
-                
                 connectedSideTerminals.push(conn);
                 renderAll(); 
                 
                 conn.on('data', (data) => {
                     if (data.type === 'POS_SYNC_REQUEST') {
-                        conn.send({ type: 'SYNC_DATA', payload: state });
+                        if (!connectedSideTerminals.find(c => c.peer === conn.peer)) connectedSideTerminals.push(conn);
+                        try { conn.send({ type: 'SYNC_DATA', payload: state }); } catch(e){}
                     } else if (data.type === 'SYNC_DATA') {
                         state = data.payload;
                         localStorage.setItem('reatState1_0', JSON.stringify(state));
@@ -543,13 +536,13 @@
             
             publicCustomerPeer.on('connection', (conn) => { 
                 if(!state.isOnline) {
-                    conn.on('open', () => { conn.send({ type: 'ERROR', message: 'Restaurant is currently offline.'}); setTimeout(()=>conn.close(), 500); });
+                    conn.on('open', () => { try { conn.send({ type: 'ERROR', message: 'Restaurant is currently offline.'}); }catch(e){} setTimeout(()=>conn.close(), 500); });
                     return;
                 }
                 connectedCustomers.push(conn);
                 conn.on('open', () => { 
                     let public_orders = state.orders.map(o => ({ id: o.id, status: o.status }));
-                    conn.send({ type: 'SYNC_MENU', payload: { menu: state.menuItems, cats: state.categories, tops: state.toppings, storeName: state.storeName }, public_orders: public_orders }); 
+                    try { conn.send({ type: 'SYNC_MENU', payload: { menu: state.menuItems, cats: state.categories, tops: state.toppings, storeName: state.storeName }, public_orders: public_orders }); } catch(e){}
                 });
                 conn.on('data', (data) => {
                     if (data.type === 'NEW_ORDER') {
@@ -558,7 +551,7 @@
                         data.order.internalId = Date.now();
                         state.orders.push(data.order);
                         broadcastState(); 
-                        conn.send({ type: 'ORDER_CONFIRMED', orderId: data.order.id }); 
+                        try { conn.send({ type: 'ORDER_CONFIRMED', orderId: data.order.id }); } catch(e){}
                         alert(`🔔 New ${data.order.orderType} Order Received! (ID: #${data.order.id})`);
                     }
                 });
@@ -581,7 +574,7 @@
             mainConnection = staffSyncPeer.connect('reat-sync-' + code);
             mainConnection.on('open', () => {
                 state.syncCode = code; 
-                mainConnection.send({ type: 'POS_SYNC_REQUEST' });
+                try { mainConnection.send({ type: 'POS_SYNC_REQUEST' }); } catch(e){}
                 document.getElementById('lanDot').className = 'lan-indicator online';
                 document.getElementById('myPeerId').innerText = "Synced: " + code;
                 if(!targetCode) alert("Connected to Main Terminal!");
@@ -650,19 +643,21 @@
         function broadcastState(excludePeerId = null) { 
             localStorage.setItem('reatState1_0', JSON.stringify(state));
             
-            if (!isMainTerminal && mainConnection && mainConnection.open) { 
-                mainConnection.send({ type: 'SYNC_DATA', payload: state }); 
+            if (!isMainTerminal && mainConnection) { 
+                try { mainConnection.send({ type: 'SYNC_DATA', payload: state }); } catch(e){}
             }
             if (isMainTerminal) {
                 if(connectedSideTerminals.length > 0) {
                     connectedSideTerminals.forEach(conn => {
-                        if (conn.open && conn.peer !== excludePeerId) { conn.send({ type: 'SYNC_DATA', payload: state }); }
+                        if (conn.peer !== excludePeerId) { 
+                            try { conn.send({ type: 'SYNC_DATA', payload: state }); } catch(e){} 
+                        }
                     });
                 }
                 if(connectedCustomers.length > 0) {
                     let public_orders = state.orders.map(o => ({ id: o.id, status: o.status }));
                     connectedCustomers.forEach(conn => {
-                        if(conn.open) {
+                        try {
                             if(!state.isOnline) {
                                 conn.send({ type: 'ERROR', message: 'Restaurant went offline.' });
                                 setTimeout(() => conn.close(), 200);
@@ -673,7 +668,7 @@
                                     public_orders: public_orders
                                 });
                             }
-                        }
+                        } catch(e) {}
                     });
                 }
             }
@@ -799,7 +794,9 @@
                         date: Date.now(), 
                         total: window.lastOrderPayload.total, 
                         items: window.lastOrderPayload.items.map(i=>`${i.qty}x ${i.name}`).join(', '),
-                        status: 'Pending' 
+                        status: 'Pending',
+                        type: window.lastOrderPayload.orderType,
+                        pin: window.lastOrderPayload.deliveryPin
                     });
                     localStorage.setItem('reat_my_orders', JSON.stringify(myOrderHistory));
 
@@ -807,7 +804,7 @@
                         <div style="background:var(--success); color:white; padding:24px; border-radius:16px; text-align:center; margin-bottom:20px; box-shadow:0 10px 20px rgba(16,185,129,0.2);">
                             <h3 style="margin:0 0 10px 0;">Order Placed Successfully!</h3>
                             <div style="font-size:2.5rem; font-weight:800; letter-spacing:2px;">#${data.orderId}</div>
-                            <p style="margin:10px 0 0 0; font-size:0.95rem;">Please present this number when collecting your order.</p>
+                            ${window.lastOrderPayload.orderType === 'Delivery' ? `<div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:10px; margin-top:15px; font-weight:bold; font-size:1.2rem;">Delivery PIN: <span style="letter-spacing:4px; color:#fff;">${window.lastOrderPayload.deliveryPin}</span></div><p style="font-size:0.85rem; margin-top:10px;">Give this PIN to your driver upon arrival.</p>` : `<p style="margin:10px 0 0 0; font-size:0.95rem;">Please present this number when collecting your order.</p>`}
                         </div>
                     `;
                     document.getElementById('cartModalOverlay').classList.add('active'); 
@@ -865,14 +862,16 @@
                 let color = 'var(--warning)';
                 if (o.status === 'Preparing') color = 'var(--primary)';
                 if (o.status === 'Prepared') color = 'var(--success)';
+                if (o.status === 'Dispatched') color = '#3b82f6';
                 if (o.status === 'Collected') color = 'var(--text-dim)';
                 if (o.status === 'Cancelled') color = 'var(--accent)';
 
                 return `<div class="cart-item" style="border-left: 4px solid ${color};">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                         <span style="font-weight:800; font-size:1.1rem;">#${o.id} <span style="font-size:0.8rem; color:var(--text-dim); font-weight:normal;">(${o.storeName})</span></span>
-                        <span class="status-pill" style="color:${color}; background:rgba(255,255,255,0.05); border: 1px solid ${color}; padding: 4px 8px; font-size: 0.7rem;">${o.status}</span>
+                        <span class="status-pill" style="color:${color}; background:rgba(255,255,255,0.05); border: 1px solid ${color}; padding: 4px 8px; font-size: 0.7rem;">${o.status === 'Dispatched' ? 'OUT FOR DELIVERY' : o.status}</span>
                     </div>
+                    ${o.type === 'Delivery' && o.status !== 'Collected' && o.status !== 'Cancelled' ? `<div style="background:rgba(255,255,255,0.05); padding:8px; border-radius:8px; display:inline-block; margin-bottom:8px; font-size:0.85rem;"><span style="color:var(--text-dim);">Delivery PIN:</span> <strong style="letter-spacing:2px; color:var(--primary);">${o.pin}</strong></div>` : ''}
                     <div style="font-size:0.85rem; color:var(--text-main); margin-bottom:8px;">${o.items}</div>
                     <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-dim);">
                         <span>${new Date(o.date).toLocaleString()}</span>
@@ -955,11 +954,12 @@
             }
 
             const orderTotal = custCart.reduce((a,b)=>a+b.totalPrice,0), totalC = custCart.reduce((a,b)=>a+b.totalCost,0);
-            const orderPayload = { timestamp: Date.now(), items: [...custCart], subtotal: orderTotal, totalCost: totalC, tip: 0, total: orderTotal, status: 'Pending', cashier: 'Customer App', orderType: custOrderMode, tableNumber: address || 'N/A' };
+            const generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
+            const orderPayload = { timestamp: Date.now(), items: [...custCart], subtotal: orderTotal, totalCost: totalC, tip: 0, total: orderTotal, status: 'Pending', cashier: 'Customer App', orderType: custOrderMode, tableNumber: address || 'N/A', deliveryPin: generatedPin };
             window.lastOrderPayload = orderPayload;
 
             if(activeConnection && activeConnection.open) {
-                activeConnection.send({ type: 'NEW_ORDER', order: orderPayload });
+                try { activeConnection.send({ type: 'NEW_ORDER', order: orderPayload }); } catch(e){}
                 custCart = []; updateCustCartUI();
             } else { alert("Connection lost. Please reconnect to the store."); }
         }
@@ -1060,14 +1060,25 @@
             }
 
             state.orderCounter++;
+            const generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
             
-            state.orders.push({ internalId: Date.now(), id: state.orderCounter, timestamp: Date.now(), items: [...currentCart], subtotal: currentCart.reduce((a,b)=>a+b.totalPrice,0), totalCost: currentCart.reduce((a,b)=>a+b.totalCost,0), tip: parseFloat(document.getElementById('cartTip').value)||0, total: currentCart.reduce((a,b)=>a+b.totalPrice,0)+(parseFloat(document.getElementById('cartTip').value)||0), status: 'Pending', cashier: state.activeCashier, orderType: posOrderMode, tableNumber: address });
+            state.orders.push({ internalId: Date.now(), id: state.orderCounter, timestamp: Date.now(), items: [...currentCart], subtotal: currentCart.reduce((a,b)=>a+b.totalPrice,0), totalCost: currentCart.reduce((a,b)=>a+b.totalCost,0), tip: parseFloat(document.getElementById('cartTip').value)||0, total: currentCart.reduce((a,b)=>a+b.totalPrice,0)+(parseFloat(document.getElementById('cartTip').value)||0), status: 'Pending', cashier: state.activeCashier, orderType: posOrderMode, tableNumber: address, deliveryPin: generatedPin });
             currentCart = []; document.getElementById('cartTip').value = '0'; document.getElementById('cartCashGiven').value = '0'; document.getElementById('cartChangeDue').innerText = '0.00';
             broadcastState(); updateCartUI();
         }
 
         function updateOrderStatus(uid, s) { const o = state.orders.find(x => (x.internalId === uid || x.id === uid)); if(o){ o.status = s; broadcastState(); } }
         
+        function promptConfirmDelivery(uid, correctPin) {
+            let entry = prompt(`Enter the Customer's 4-digit Delivery PIN (or Master Admin PIN):`);
+            if (entry === correctPin || entry === state.adminPin) {
+                updateOrderStatus(uid, 'Collected');
+                alert("Delivery Verified and Logged Successfully!");
+            } else if (entry !== null) {
+                alert("Incorrect PIN. Delivery not confirmed.");
+            }
+        }
+
         function deleteSpecificOrder(uid) {
             let pin = prompt("Enter Admin PIN to delete this specific order:");
             if (pin !== state.adminPin) return alert("Access Denied. Admin PIN required.");
@@ -1159,7 +1170,7 @@
             state.employees.forEach(e => { csvContent += `Employee,${e.id},${e.name.replace(/,/g, ' ')},${e.sector},${e.role},\n`; });
             csvContent += `System_PINs,AdminPIN:${state.adminPin},ManagerPIN:${state.managerPin},,,,\n`;
             state.orders.forEach(o => { let safeTime = formatTime(o.timestamp).replace(/,/g, ''); csvContent += `Order,${o.internalId || o.id},Total:${o.total},Cost:${o.totalCost || 0},Cashier:${o.cashier},${safeTime}\n`; });
-            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "reat_backup_v1_8.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "reat_backup_v2_0.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
 
         function importCSV(event) {
@@ -1268,7 +1279,7 @@
             // Analytics Calculation Engine
             let tRev = 0, tTips = 0, tOrd = 0, tProf = 0, iAnly = {}, cashierStats = {};
             let readyPickupHtml = ''; let readyDeliveryHtml = ''; 
-            let activeDeliveryHtml = '';
+            let activeDeliveryHtml = ''; let outForDeliveryHtml = '';
             document.getElementById('kitchenGrid').innerHTML = ''; 
             
             state.orders.forEach(o => {
@@ -1286,12 +1297,26 @@
                         }
                     }
                     else if(o.status === 'Prepared') { 
-                        let rHtml = `<div class="order-card" style="border-left-color:var(--success); background: rgba(16, 185, 129, 0.03); padding: 18px; margin-bottom:12px; border-radius:20px;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><span style="font-weight:800; font-size:1.4rem; color:var(--success);">#${o.id}</span><span class="status-pill" style="color:var(--success); background:rgba(16,185,129,0.1); border-color:var(--success);">READY</span></div><div style="font-size:0.85rem; color:var(--text-dim); margin-bottom:5px;">Type: ${o.orderType || 'Takeaway'}</div>${cardAddressText}<div style="font-size:0.95rem; margin-bottom:18px; color:var(--text-main); font-weight:500;">${o.items.map(i=>`${i.qty}x ${i.name}`).join(', ')}</div><button class="submit-btn-large" style="background:var(--success); margin:0; padding:12px; height:auto; box-shadow:none;" onclick="updateOrderStatus(${o.internalId || o.id}, 'Collected')">${o.orderType === 'Delivery' ? 'DISPATCH DELIVERY' : 'LOG HANDOVER'}</button></div>`; 
+                        let rHtml = `<div class="order-card" style="border-left-color:var(--success); background: rgba(16, 185, 129, 0.03); padding: 18px; margin-bottom:12px; border-radius:20px;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><span style="font-weight:800; font-size:1.4rem; color:var(--success);">#${o.id}</span><span class="status-pill" style="color:var(--success); background:rgba(16,185,129,0.1); border-color:var(--success);">READY</span></div><div style="font-size:0.85rem; color:var(--text-dim); margin-bottom:5px;">Type: ${o.orderType || 'Takeaway'}</div>${cardAddressText}<div style="font-size:0.95rem; margin-bottom:18px; color:var(--text-main); font-weight:500;">${o.items.map(i=>`${i.qty}x ${i.name}`).join(', ')}</div><button class="submit-btn-large" style="background:var(--success); margin:0; padding:12px; height:auto; box-shadow:none;" onclick="updateOrderStatus(${o.internalId || o.id}, '${o.orderType === 'Delivery' ? 'Dispatched' : 'Collected'}')">${o.orderType === 'Delivery' ? 'DISPATCH DELIVERY' : 'LOG HANDOVER'}</button></div>`; 
                         
                         if (o.orderType === 'Delivery') { readyDeliveryHtml += rHtml; } 
                         else { readyPickupHtml += rHtml; }
                     }
                 }
+                
+                if(o.status === 'Dispatched') {
+                    let dHtml = `<div class="order-card" style="border-left-color:var(--warning); background: rgba(245, 158, 11, 0.03); padding: 18px; margin-bottom:12px; border-radius:20px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <span style="font-weight:800; font-size:1.4rem; color:var(--warning);">#${o.id}</span>
+                            <span class="status-pill" style="color:var(--warning); background:rgba(245,158,11,0.1); border-color:var(--warning);">OUT FOR DELIVERY</span>
+                        </div>
+                        ${cardAddressText}
+                        <div style="font-size:0.95rem; margin-bottom:18px; color:var(--text-main); font-weight:500;">${o.items.map(i=>`${i.qty}x ${i.name}`).join(', ')}</div>
+                        <button class="submit-btn-large" style="background:var(--warning); margin:0; padding:12px; height:auto; box-shadow:none;" onclick="promptConfirmDelivery(${o.internalId || o.id}, '${o.deliveryPin}')">CONFIRM DELIVERY</button>
+                    </div>`;
+                    outForDeliveryHtml += dHtml;
+                }
+
                 if(o.status === 'Collected') {
                     tRev += o.subtotal; tTips += o.tip; tOrd++; tProf += (o.subtotal - (o.totalCost || 0));
                     o.items.forEach(i => { if(!iAnly[i.name]) iAnly[i.name]={q:0,c:0,r:0,p:0}; iAnly[i.name].q+=i.qty; iAnly[i.name].c+=(i.totalCost || 0); iAnly[i.name].r+=i.totalPrice; iAnly[i.name].p+=(i.totalPrice-(i.totalCost || 0)); });
@@ -1300,7 +1325,8 @@
             });
             
             document.getElementById('completedOrdersGrid').innerHTML = readyPickupHtml || `<div style="text-align:center; padding: 24px; color:var(--text-dim); border: 2px dashed var(--border); border-radius: 16px; font-weight:600; font-size:0.9rem;">Counter Clear.</div>`;
-            document.getElementById('completedDeliveryGrid').innerHTML = readyDeliveryHtml || `<div style="text-align:center; padding: 24px; color:var(--text-dim); border: 2px dashed var(--border); border-radius: 16px; font-weight:600; grid-column: 1/-1;">No Deliveries to Dispatch.</div>`;
+            document.getElementById('outDeliveryGrid').innerHTML = outForDeliveryHtml || `<div style="text-align:center; padding: 24px; color:var(--text-dim); border: 2px dashed var(--border); border-radius: 16px; font-weight:600; grid-column: 1/-1;">No deliveries currently out.</div>`;
+            document.getElementById('completedDeliveryGrid').innerHTML = readyDeliveryHtml || `<div style="text-align:center; padding: 24px; color:var(--text-dim); border: 2px dashed var(--border); border-radius: 16px; font-weight:600; grid-column: 1/-1;">No Deliveries ready to dispatch.</div>`;
             document.getElementById('activeDeliveryGrid').innerHTML = activeDeliveryHtml || `<div style="text-align:center; padding: 24px; color:var(--text-dim); border: 2px dashed var(--border); border-radius: 16px; font-weight:600; grid-column: 1/-1;">No active deliveries in production.</div>`;
             
             // Populating Stat Cards
