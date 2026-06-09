@@ -169,6 +169,7 @@
 </head>
 <body>
 
+    <!-- GLOBALLY ACCESSIBLE ORDER HISTORY OVERLAY -->
     <div class="cart-modal-overlay" id="ordersModalOverlay">
         <div class="cust-cart-panel" style="max-width: 600px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
@@ -176,10 +177,12 @@
                 <button onclick="toggleOrdersModal()" style="background:transparent; border:none; color:var(--text-dim); font-size:1.5rem; cursor:pointer;">✕</button>
             </div>
             <div id="custOrdersList" style="flex:1; overflow-y:auto; min-height: 250px; max-height: 60vh;">
-                </div>
+                <!-- Dynamically Populated Order History -->
+            </div>
         </div>
     </div>
 
+    <!-- CUSTOMER HUB -->
     <div id="customer-hub" class="screen-overlay">
         <h1 style="font-size: 4rem; font-weight: 800; letter-spacing: -2px; margin-bottom: 5px;">REat <span style="color:var(--primary); font-size: 1.5rem; vertical-align: middle;">V2.0</span></h1>
         <p style="color: var(--text-dim); font-size: 1.1rem; max-width: 400px; margin-bottom: 20px;">Premium Local Ordering</p>
@@ -203,6 +206,7 @@
         </div>
     </div>
 
+    <!-- CUSTOMER MENU -->
     <div id="customer-menu-view" class="screen-overlay">
         <div class="cust-nav">
             <div style="display:flex; flex-direction:column;">
@@ -223,6 +227,7 @@
             <div class="cust-menu-scroll" id="custMenuContainer"></div>
         </div>
 
+        <!-- POPUP CART MODAL -->
         <div class="cart-modal-overlay" id="cartModalOverlay">
             <div class="cust-cart-panel" id="custCartPanelObj">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
@@ -261,6 +266,7 @@
         </button>
     </div>
 
+    <!-- STAFF APP -->
     <div id="staff-app-container" class="screen-overlay">
         <div id="staff-login-gate" style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; width:100%; background:var(--bg-deep); z-index:3000;">
             <div class="panel" style="width: 100%; max-width: 450px; text-align:center; padding: 40px;">
@@ -404,7 +410,8 @@
                     </div>
 
                     <div class="panel" id="syncStatusUI">
-                        </div>
+                        <!-- Dynamic Sync Control Core Panel -->
+                    </div>
                     
                     <div class="panel">
                         <h3 style="margin-bottom: 16px;">System Connections & Vault Data</h3>
@@ -415,6 +422,14 @@
                                 <input type="text" id="storeNameInput" style="width:100%; background:var(--bg-deep); border:1px solid var(--border); padding:12px 18px; border-radius:12px; color:white; margin-top:6px; font-size:1rem;" placeholder="e.g. My Awesome Cafe">
                             </div>
                             <button class="btn-status" style="width:auto; padding:12px 24px;" onclick="updateStoreName()">UPDATE NAME</button>
+                        </div>
+
+                        <div style="display:flex; gap:12px; margin-bottom: 24px; align-items:flex-end; border-bottom: 1px solid var(--border); padding-bottom:24px; flex-wrap: wrap;">
+                            <div style="flex:1; min-width: 250px;">
+                                <label style="font-size:0.8rem; color:var(--text-dim); font-weight:700;">Max Active Deliveries (0 = Infinite)</label>
+                                <input type="number" id="maxDelInput" style="width:100%; background:var(--bg-deep); border:1px solid var(--border); padding:12px 18px; border-radius:12px; color:white; margin-top:6px; font-size:1rem;" placeholder="e.g. 5">
+                            </div>
+                            <button class="btn-status" style="width:auto; padding:12px 24px;" onclick="updateMaxDeliveries()">SET LIMIT</button>
                         </div>
 
                         <div style="display: flex; gap:14px; margin-top:10px; flex-wrap:wrap;">
@@ -432,6 +447,7 @@
         </div>
     </div>
 
+    <!-- MODAL CONTAINER -->
     <div id="modalContainer" class="modal-overlay"></div>
 
     <script>
@@ -457,13 +473,14 @@
             storeName: "My Restaurant",
             syncCode: Math.floor(10000 + Math.random() * 90000).toString(),
             categories: ['Mains', 'Sides', 'Beverages', 'Desserts'],
-            menuItems: [{ id: 1, name: 'Burger', price: 150, cost: 60, category: 'Mains', image: '🍔' }], 
+            menuItems: [{ id: 1, name: 'Burger', price: 150, cost: 60, category: 'Mains', image: '🍔', reqMod: false }], 
             toppings: [{ id: 1, name: 'Extra Cheese', price: 20, link: ['All'] }], 
             employees: [{internalId: 1, id: '001', name: 'Admin', sector: 'Administration', role: 'Owner'}], 
-            orders: [], orderCounter: 100, adminPin: '1234', managerPin: '5678', activeCashier: 'Unassigned', isOnline: false
+            orders: [], orderCounter: 100, adminPin: '1234', managerPin: '5678', activeCashier: 'Unassigned', isOnline: false, maxDeliveries: 0
         };
         
         if(state.isOnline === undefined) state.isOnline = false;
+        if(state.maxDeliveries === undefined) state.maxDeliveries = 0;
         localStorage.setItem('reatState1_0', JSON.stringify(state));
         
         let currentPosCategory = 'All';
@@ -542,7 +559,8 @@
                 connectedCustomers.push(conn);
                 conn.on('open', () => { 
                     let public_orders = state.orders.map(o => ({ id: o.id, status: o.status }));
-                    try { conn.send({ type: 'SYNC_MENU', payload: { menu: state.menuItems, cats: state.categories, tops: state.toppings, storeName: state.storeName }, public_orders: public_orders }); } catch(e){}
+                    let activeDelCount = state.orders.filter(o => o.orderType === 'Delivery' && o.status !== 'Collected' && o.status !== 'Cancelled').length;
+                    try { conn.send({ type: 'SYNC_MENU', payload: { menu: state.menuItems, cats: state.categories, tops: state.toppings, storeName: state.storeName, maxDel: state.maxDeliveries || 0, activeDel: activeDelCount }, public_orders: public_orders }); } catch(e){}
                 });
                 conn.on('data', (data) => {
                     if (data.type === 'NEW_ORDER') {
@@ -656,6 +674,8 @@
                 }
                 if(connectedCustomers.length > 0) {
                     let public_orders = state.orders.map(o => ({ id: o.id, status: o.status }));
+                    let activeDelCount = state.orders.filter(o => o.orderType === 'Delivery' && o.status !== 'Collected' && o.status !== 'Cancelled').length;
+                    
                     connectedCustomers.forEach(conn => {
                         try {
                             if(!state.isOnline) {
@@ -664,7 +684,7 @@
                             } else {
                                 conn.send({ 
                                     type: 'SYNC_MENU', 
-                                    payload: { menu: state.menuItems, cats: state.categories, tops: state.toppings, storeName: state.storeName },
+                                    payload: { menu: state.menuItems, cats: state.categories, tops: state.toppings, storeName: state.storeName, maxDel: state.maxDeliveries || 0, activeDel: activeDelCount },
                                     public_orders: public_orders
                                 });
                             }
@@ -675,10 +695,23 @@
             if(isStoreRoute) renderAll(); 
         }
 
+        function recalculateOrderCounter() {
+            if (state.orders.length === 0) {
+                state.orderCounter = 100;
+            } else {
+                let maxVal = 100;
+                state.orders.forEach(o => {
+                    let num = typeof o.id === 'string' ? parseInt(o.id.replace(/\D/g, '')) : o.id;
+                    if (num && !isNaN(num) && num > maxVal) maxVal = num;
+                });
+                state.orderCounter = maxVal;
+            }
+        }
+
         // --- CUSTOMER HUB LOGIC ---
         let custCart = [];
         let custOrderMode = 'Takeaway';
-        let custMenuData = { menu: [], cats: [], tops: [], storeName: "" };
+        let custMenuData = { menu: [], cats: [], tops: [], storeName: "", maxDel: 0, activeDel: 0 };
 
         function initCustomerNetwork() {
             peer = new Peer();
@@ -833,6 +866,11 @@
         }
 
         function setOrderType(type) {
+            if(type === 'Delivery' && custMenuData.maxDel > 0 && custMenuData.activeDel >= custMenuData.maxDel) {
+                alert("This restaurant is not available for delivery at this time (maximum capacity reached).");
+                return;
+            }
+
             custOrderMode = type;
             document.getElementById('btnTakeaway').classList.remove('active'); 
             document.getElementById('btnDineIn').classList.remove('active');
@@ -916,10 +954,18 @@
             activePopupItem = custMenuData.menu.find(x => x.id === id); activeToppings = []; 
             const applicableToppings = custMenuData.tops.filter(t => { let linkArr = Array.isArray(t.link) ? t.link : [t.link]; return linkArr.includes('All') || linkArr.includes(id.toString()) || linkArr.includes('cat-' + activePopupItem.category); });
             const tops = applicableToppings.map(t => `<div class="topping-chip" onclick="toggleCartTopping(this, '${t.name}', ${t.price})">${t.name} (+₹${t.price})</div>`).join('');
-            openModal(`<div class="modal-content"><div class="modal-main"><h2 style="color:var(--primary); margin-bottom:12px; margin-top:0;">${activePopupItem.name}</h2><div style="display:flex; justify-content:space-between; align-items:center; margin: 24px 0;"><span style="font-weight: 700;">Quantity</span><div class="qty-controls"><button class="qty-btn" onclick="changeQty(-1)">−</button><span id="modalQty" style="font-weight:800; font-size:1.3rem;">1</span><button class="qty-btn" onclick="changeQty(1)">+</button></div></div><textarea id="modalNote" placeholder="Special requests..."></textarea></div><div class="modal-sidebar"><h3 style="margin-top:0;">Add-ons</h3><div style="max-height: 250px; overflow-y:auto; margin-bottom: 20px;">${tops}</div><div style="margin-top: auto; display:flex; flex-direction:column; gap:10px;"><button class="submit-btn-large" id="modalTotalBtn" style="margin:0; padding:14px;" onclick="confirmCustomerItem()">ADD TO CART - ₹${activePopupItem.price}</button><button onclick="closeModal()" style="background:transparent; color:var(--accent); border:none; cursor:pointer; font-weight:700;">CANCEL</button></div></div></div>`);
+            
+            let reqTag = activePopupItem.reqMod ? ' <span style="color:var(--accent); font-size:0.8rem; vertical-align:middle;">* Required</span>' : '';
+            
+            openModal(`<div class="modal-content"><div class="modal-main"><h2 style="color:var(--primary); margin-bottom:12px; margin-top:0;">${activePopupItem.name}</h2><div style="display:flex; justify-content:space-between; align-items:center; margin: 24px 0;"><span style="font-weight: 700;">Quantity</span><div class="qty-controls"><button class="qty-btn" onclick="changeQty(-1)">−</button><span id="modalQty" style="font-weight:800; font-size:1.3rem;">1</span><button class="qty-btn" onclick="changeQty(1)">+</button></div></div><textarea id="modalNote" placeholder="Special requests..."></textarea></div><div class="modal-sidebar"><h3 style="margin-top:0;">Add-ons${reqTag}</h3><div style="max-height: 250px; overflow-y:auto; margin-bottom: 20px;">${tops}</div><div style="margin-top: auto; display:flex; flex-direction:column; gap:10px;"><button class="submit-btn-large" id="modalTotalBtn" style="margin:0; padding:14px;" onclick="confirmCustomerItem()">ADD TO CART - ₹${activePopupItem.price}</button><button onclick="closeModal()" style="background:transparent; color:var(--accent); border:none; cursor:pointer; font-weight:700;">CANCEL</button></div></div></div>`);
         }
 
-        function confirmCustomerItem() { const q = parseInt(document.getElementById('modalQty').innerText), n = document.getElementById('modalNote').value; custCart.push({ id: Date.now(), name: activePopupItem.name, qty:q, totalPrice:(activePopupItem.price+activeToppings.reduce((a,b)=>a+b.price,0))*q, totalCost:(activePopupItem.cost||0)*q, note:n, toppings:activeToppings.map(t=>t.name) }); closeModal(); updateCustCartUI(); }
+        function confirmCustomerItem() { 
+            if (activePopupItem.reqMod && activeToppings.length === 0) {
+                return alert("You must select at least one modifier to proceed.");
+            }
+            const q = parseInt(document.getElementById('modalQty').innerText), n = document.getElementById('modalNote').value; custCart.push({ id: Date.now(), name: activePopupItem.name, qty:q, totalPrice:(activePopupItem.price+activeToppings.reduce((a,b)=>a+b.price,0))*q, totalCost:(activePopupItem.cost||0)*q, note:n, toppings:activeToppings.map(t=>t.name) }); closeModal(); updateCustCartUI(); 
+        }
         function removeCustCart(id) { custCart = custCart.filter(i => i.id !== id); updateCustCartUI(); }
         
         function updateCustCartUI() { 
@@ -947,6 +993,10 @@
         function submitCustomerOrder() {
             if(!custCart.length) return alert("Your cart is empty!");
             
+            if (custOrderMode === 'Delivery' && custMenuData.maxDel > 0 && custMenuData.activeDel >= custMenuData.maxDel) {
+                return alert("This restaurant is not available for delivery right now (at capacity). Please change to Takeaway or Dine-in.");
+            }
+
             let address = '';
             if (custOrderMode === 'Delivery') {
                 address = document.getElementById('custDeliveryAddress').value.trim();
@@ -971,6 +1021,7 @@
                 document.getElementById('staff-login-gate').style.display = 'none'; document.getElementById('staff-app').style.display = 'flex';
                 document.getElementById('storeOnlineSwitch').checked = state.isOnline;
                 document.getElementById('storeNameInput').value = state.storeName;
+                if (document.getElementById('maxDelInput')) document.getElementById('maxDelInput').value = state.maxDeliveries || 0;
                 renderAll();
             } else { alert("Incorrect System PIN."); }
         }
@@ -995,7 +1046,26 @@
             } 
         }
 
+        function updateMaxDeliveries() {
+            let val = parseInt(document.getElementById('maxDelInput').value);
+            if(!isNaN(val) && val >= 0) {
+                state.maxDeliveries = val;
+                if(isMainTerminal) { bindPublicCustomerListener(); }
+                broadcastState();
+                alert("Delivery capacity limit updated.");
+            }
+        }
+
         function setPosOrderType(type) {
+            if(type === 'Delivery' && state.maxDeliveries > 0) {
+                let activeDels = state.orders.filter(o => o.orderType === 'Delivery' && o.status !== 'Collected' && o.status !== 'Cancelled').length;
+                if(activeDels >= state.maxDeliveries) {
+                    if(!confirm("Warning: Restaurant is at maximum delivery capacity. Override and proceed anyway?")) {
+                        return;
+                    }
+                }
+            }
+
             posOrderMode = type; 
             document.getElementById('posBtnTakeaway').classList.remove('active'); 
             document.getElementById('posBtnDineIn').classList.remove('active');
@@ -1039,12 +1109,20 @@
             activePopupItem = state.menuItems.find(x => x.id === id); activeToppings = []; 
             const applicableToppings = state.toppings.filter(t => { let linkArr = Array.isArray(t.link) ? t.link : [t.link]; return linkArr.includes('All') || linkArr.includes(id.toString()) || linkArr.includes('cat-' + activePopupItem.category); });
             const tops = applicableToppings.map(t => `<div class="topping-chip" onclick="toggleCartTopping(this, '${t.name}', ${t.price})">${t.name} (+₹${t.price})</div>`).join('');
-            openModal(`<div class="modal-content"><div class="modal-main"><h2 style="color:var(--primary); margin-bottom:12px; margin-top:0;">${activePopupItem.name}</h2><div style="display:flex; justify-content:space-between; align-items:center; margin: 24px 0;"><span style="font-weight: 700;">Quantity</span><div class="qty-controls"><button class="qty-btn" onclick="changeQty(-1)">−</button><span id="modalQty" style="font-weight:800; font-size:1.3rem;">1</span><button class="qty-btn" onclick="changeQty(1)">+</button></div></div><textarea id="modalNote" placeholder="Kitchen Directives..."></textarea></div><div class="modal-sidebar"><h3 style="margin-top:0;">Modifiers</h3><div style="max-height: 250px; overflow-y:auto; margin-bottom: 20px;">${tops}</div><div style="margin-top: auto; display:flex; flex-direction:column; gap:10px;"><button class="submit-btn-large" id="modalTotalBtn" style="margin:0; padding:14px;" onclick="confirmItem()">ADD - ₹${activePopupItem.price}</button><button onclick="closeModal()" style="background:transparent; color:var(--accent); border:none; cursor:pointer; font-weight:700;">ABORT</button></div></div></div>`);
+            
+            let reqTag = activePopupItem.reqMod ? '<span style="color:var(--accent); font-size:0.85rem; vertical-align:middle;">* Required Modifier</span>' : 'Modifiers';
+
+            openModal(`<div class="modal-content"><div class="modal-main"><h2 style="color:var(--primary); margin-bottom:12px; margin-top:0;">${activePopupItem.name}</h2><div style="display:flex; justify-content:space-between; align-items:center; margin: 24px 0;"><span style="font-weight: 700;">Quantity</span><div class="qty-controls"><button class="qty-btn" onclick="changeQty(-1)">−</button><span id="modalQty" style="font-weight:800; font-size:1.3rem;">1</span><button class="qty-btn" onclick="changeQty(1)">+</button></div></div><textarea id="modalNote" placeholder="Kitchen Directives..."></textarea></div><div class="modal-sidebar"><h3 style="margin-top:0;">${reqTag}</h3><div style="max-height: 250px; overflow-y:auto; margin-bottom: 20px;">${tops}</div><div style="margin-top: auto; display:flex; flex-direction:column; gap:10px;"><button class="submit-btn-large" id="modalTotalBtn" style="margin:0; padding:14px;" onclick="confirmItem()">ADD - ₹${activePopupItem.price}</button><button onclick="closeModal()" style="background:transparent; color:var(--accent); border:none; cursor:pointer; font-weight:700;">ABORT</button></div></div></div>`);
         }
         function changeQty(d) { let c = parseInt(document.getElementById('modalQty').innerText); if(c+d>=1) { document.getElementById('modalQty').innerText = c+d; updateModalTotalPrice(); } }
         function toggleCartTopping(btn, name, price) { btn.classList.toggle('active'); if(btn.classList.contains('active')) activeToppings.push({name, price}); else activeToppings = activeToppings.filter(t => t.name !== name); updateModalTotalPrice(); }
         function updateModalTotalPrice() { const qty = parseInt(document.getElementById('modalQty').innerText); const total = (activePopupItem.price + activeToppings.reduce((a, b) => a + b.price, 0)) * qty; document.getElementById('modalTotalBtn').innerText = `ADD - ₹${total}`; }
-        function confirmItem() { const q = parseInt(document.getElementById('modalQty').innerText), n = document.getElementById('modalNote').value; currentCart.push({ id: Date.now(), name: activePopupItem.name, qty:q, totalPrice:(activePopupItem.price+activeToppings.reduce((a,b)=>a+b.price,0))*q, totalCost:(activePopupItem.cost||0)*q, note:n, toppings:activeToppings.map(t=>t.name) }); closeModal(); updateCartUI(); }
+        function confirmItem() { 
+            if (activePopupItem.reqMod && activeToppings.length === 0) {
+                return alert("You must select at least one modifier for this item.");
+            }
+            const q = parseInt(document.getElementById('modalQty').innerText), n = document.getElementById('modalNote').value; currentCart.push({ id: Date.now(), name: activePopupItem.name, qty:q, totalPrice:(activePopupItem.price+activeToppings.reduce((a,b)=>a+b.price,0))*q, totalCost:(activePopupItem.cost||0)*q, note:n, toppings:activeToppings.map(t=>t.name) }); closeModal(); updateCartUI(); 
+        }
         function removeFromCart(id) { currentCart = currentCart.filter(i => i.id !== id); updateCartUI(); }
 
         function calculateChangeDue() { const subtotal = currentCart.reduce((acc, curr) => acc + curr.totalPrice, 0); const tip = parseFloat(document.getElementById('cartTip').value) || 0; const tenderAmount = parseFloat(document.getElementById('cartCashGiven').value) || 0; const diff = tenderAmount - (subtotal + tip); document.getElementById('cartChangeDue').innerText = diff > 0 ? diff.toFixed(2) : "0.00"; }
@@ -1084,6 +1162,7 @@
             if (pin !== state.adminPin) return alert("Access Denied. Admin PIN required.");
             if (confirm("Permanently delete this order record? This action cannot be undone.")) {
                 state.orders = state.orders.filter(o => (o.internalId !== uid && o.id !== uid));
+                recalculateOrderCounter();
                 broadcastState();
             }
         }
@@ -1093,6 +1172,7 @@
             if (pin !== state.adminPin) return alert("Access Denied. Admin PIN required.");
             if (prompt("Type DELETE to confirm wiping the entire order history:") === "DELETE") {
                 state.orders = [];
+                recalculateOrderCounter();
                 broadcastState();
                 alert("Order history has been completely wiped.");
             }
@@ -1100,11 +1180,11 @@
 
         let editingMenuId = null;
         function openMenuModal(id = null) {
-            editingMenuId = id; let m = id ? state.menuItems.find(x => x.id === id) : {name:'', price:'', cost:'', category: state.categories[0]||'Mains', image:''};
+            editingMenuId = id; let m = id ? state.menuItems.find(x => x.id === id) : {name:'', price:'', cost:'', category: state.categories[0]||'Mains', image:'', reqMod: false};
             let catOptions = state.categories.map(c => `<option value="${c}" ${m.category===c?'selected':''}>${c}</option>`).join('');
-            openModal(`<div class="modal-content modal-mini"><h2>${id?'Edit Recipe':'New Recipe'}</h2><div style="display:flex; flex-direction:column; gap:15px; margin-top:15px;"><input type="text" id="modMenuName" value="${m.name}" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;" placeholder="Item Name"><input type="text" id="modMenuImage" value="${m.image || ''}" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;" placeholder="Food Logo (Emoji or Image URL)"><input type="number" id="modMenuPrice" value="${m.price}" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;" placeholder="Price (₹)"><input type="number" id="modMenuCost" value="${m.cost}" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;" placeholder="Cost (₹)"><select id="modMenuCat" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;">${catOptions}</select><button class="submit-btn-large" onclick="saveMenuModal()">SAVE</button><button onclick="closeModal()" style="background:transparent; color:var(--accent); border:none; margin-top:10px;">CANCEL</button></div></div>`);
+            openModal(`<div class="modal-content modal-mini"><h2>${id?'Edit Recipe':'New Recipe'}</h2><div style="display:flex; flex-direction:column; gap:15px; margin-top:15px;"><input type="text" id="modMenuName" value="${m.name}" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;" placeholder="Item Name"><input type="text" id="modMenuImage" value="${m.image || ''}" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;" placeholder="Food Logo (Emoji or Image URL)"><input type="number" id="modMenuPrice" value="${m.price}" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;" placeholder="Price (₹)"><input type="number" id="modMenuCost" value="${m.cost}" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;" placeholder="Cost (₹)"><select id="modMenuCat" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;">${catOptions}</select><label style="display:flex; align-items:center; gap:10px; font-size:0.95rem; color:var(--text-main); margin-top:5px; margin-bottom:5px;"><input type="checkbox" id="modMenuReqMod" ${m.reqMod ? 'checked' : ''} style="width:18px; height:18px; accent-color:var(--primary);"> Require at least 1 modifier</label><button class="submit-btn-large" style="margin-top:0;" onclick="saveMenuModal()">SAVE</button><button onclick="closeModal()" style="background:transparent; color:var(--accent); border:none; margin-top:10px;">CANCEL</button></div></div>`);
         }
-        function saveMenuModal() { let n = document.getElementById('modMenuName').value.trim(), img = document.getElementById('modMenuImage').value.trim() || '🍲', p = parseFloat(document.getElementById('modMenuPrice').value), c = parseFloat(document.getElementById('modMenuCost').value)||0, cat = document.getElementById('modMenuCat').value; if(!n || isNaN(p)) return alert("Name and Price required."); if(editingMenuId) { let m = state.menuItems.find(x => x.id === editingMenuId); if(m) { m.name = n; m.image = img; m.price = p; m.cost = c; m.category = cat; } } else { state.menuItems.push({id: Date.now(), name:n, image:img, price:p, cost:c, category:cat}); } broadcastState(); closeModal(); }
+        function saveMenuModal() { let n = document.getElementById('modMenuName').value.trim(), img = document.getElementById('modMenuImage').value.trim() || '🍲', p = parseFloat(document.getElementById('modMenuPrice').value), c = parseFloat(document.getElementById('modMenuCost').value)||0, cat = document.getElementById('modMenuCat').value, reqMod = document.getElementById('modMenuReqMod').checked; if(!n || isNaN(p)) return alert("Name and Price required."); if(editingMenuId) { let m = state.menuItems.find(x => x.id === editingMenuId); if(m) { m.name = n; m.image = img; m.price = p; m.cost = c; m.category = cat; m.reqMod = reqMod; } } else { state.menuItems.push({id: Date.now(), name:n, image:img, price:p, cost:c, category:cat, reqMod: reqMod}); } broadcastState(); closeModal(); }
 
         function addCategory() { let val = document.getElementById('newCatInput').value.trim(); if(val && !state.categories.includes(val)) { state.categories.push(val); document.getElementById('newCatInput').value = ''; broadcastState(); } }
         function deleteCategory(cat) { if(state.menuItems.some(m => m.category === cat)) return alert("Menu items are using this category."); state.categories = state.categories.filter(c => c !== cat); broadcastState(); }
@@ -1190,7 +1270,17 @@
         }
         
         function changePin(type) { const old = prompt(`Provide Current PIN:`), nw = prompt("New PIN (min 4 digits):"); if(old === state[type+'Pin'] && nw?.length >= 4) { state[type+'Pin'] = nw; broadcastState(); alert("PIN Updated."); } }
-        function wipeHistory() { if(prompt("Type DELETE to execute override:") === "DELETE") { state = { storeName: "My Restaurant", syncCode: Math.floor(10000 + Math.random() * 90000).toString(), categories: ['Mains'], menuItems: [], toppings: [], employees: [], orders: [], orderCounter: 100, adminPin: '1234', managerPin: '5678', activeCashier: 'Unassigned' }; broadcastState(); alert("System wiped."); } }
+        
+        function wipeHistory() { 
+            let pin = prompt("Enter Admin PIN to WIPE ENTIRE SYSTEM:");
+            if (pin !== state.adminPin) return alert("Access Denied. Admin PIN required.");
+            if(prompt("Type DELETE to execute override:") === "DELETE") { 
+                let oldSync = state.syncCode; let oldAdmin = state.adminPin; let oldMan = state.managerPin;
+                state = { storeName: "My Restaurant", syncCode: oldSync, categories: ['Mains'], menuItems: [], toppings: [], employees: [], orders: [], orderCounter: 100, adminPin: oldAdmin, managerPin: oldMan, activeCashier: 'Unassigned', maxDeliveries: 0, isOnline: false }; 
+                broadcastState(); alert("System wiped. History deleted, POS Settings retained."); 
+            } 
+        }
+
         function startNewDay() { if(confirm("Reset ticket counter to #1?")) { state.orderCounter = 0; broadcastState(); alert("Counter reset."); } }
 
         // --- RENDER ALL (UI Refresh) ---
@@ -1256,7 +1346,7 @@
             // Standard UI Repopulation
             document.getElementById('nextOrderNumber').innerText = `Staged: #${state.orderCounter + 1}`;
             document.getElementById('catAdminList').innerHTML = state.categories.map(c => `<span style="background:var(--bg-card); border:1px solid var(--border); padding:8px 16px; border-radius:24px; font-size:0.85rem; display:flex; align-items:center; gap:8px;">${c} <button onclick="deleteCategory('${c}')" style="background:none; border:none; color:var(--accent); cursor:pointer; font-weight:bold;">×</button></span>`).join('');
-            document.getElementById('menuAdminBody').innerHTML = state.menuItems.map(m => `<tr><td><b>${m.name}</b></td><td><span style="color:var(--primary); font-size:0.8rem; font-weight:700;">${m.category}</span></td><td>₹${m.price}</td><td>₹${m.cost}</td><td><button class="btn-edit" onclick="openMenuModal(${m.id})">Edit</button><button class="btn-delete" onclick="state.menuItems=state.menuItems.filter(x=>x.id!==${m.id}); broadcastState();">Del</button></td></tr>`).join('');
+            document.getElementById('menuAdminBody').innerHTML = state.menuItems.map(m => `<tr><td><b>${m.name}</b> ${m.reqMod ? '<span style="color:var(--accent); font-size:0.75rem;">(*Req)</span>' : ''}</td><td><span style="color:var(--primary); font-size:0.8rem; font-weight:700;">${m.category}</span></td><td>₹${m.price}</td><td>₹${m.cost}</td><td><button class="btn-edit" onclick="openMenuModal(${m.id})">Edit</button><button class="btn-delete" onclick="state.menuItems=state.menuItems.filter(x=>x.id!==${m.id}); broadcastState();">Del</button></td></tr>`).join('');
             document.getElementById('toppingsAdminBody').innerHTML = state.toppings.map(t => { let linkName = ''; let linksArray = Array.isArray(t.link) ? t.link : [t.link]; if (linksArray.includes('All')) { linkName = 'Global'; } else { linkName = linksArray.length + ' Links'; } return `<tr><td><b>${t.name}</b></td><td><span style="color:var(--text-dim); font-size:0.85rem;">${linkName}</span></td><td>₹${t.price}</td><td><button class="btn-edit" onclick="openToppingModal(${t.id})">Edit</button><button class="btn-delete" onclick="state.toppings=state.toppings.filter(x=>x.id!==${t.id}); broadcastState();">Del</button></td></tr>`; }).join('');
             document.getElementById('employeeTableBody').innerHTML = state.employees.map(e => `<tr><td>${e.id}</td><td><b>${e.name}</b></td><td><span style="color:var(--text-dim); font-weight:600;">${e.role}</span> <small>(${e.sector})</small></td><td><button class="btn-edit" onclick="openEmployeeModal(${e.internalId})">Edit</button><button class="btn-delete" onclick="state.employees=state.employees.filter(x=>x.internalId!==${e.internalId}); broadcastState();">Del</button></td></tr>`).join('');
             
