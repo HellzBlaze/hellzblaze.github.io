@@ -473,14 +473,20 @@
             storeName: "My Restaurant",
             syncCode: Math.floor(10000 + Math.random() * 90000).toString(),
             categories: ['Mains', 'Sides', 'Beverages', 'Desserts'],
-            menuItems: [{ id: 1, name: 'Burger', price: 150, cost: 60, category: 'Mains', image: '🍔', reqMod: false }], 
-            toppings: [{ id: 1, name: 'Extra Cheese', price: 20, link: ['All'] }], 
+            menuItems: [{ id: 1, name: 'Burger', price: 150, cost: 60, category: 'Mains', image: '🍔' }], 
+            toppings: [{ id: 1, name: 'Extra Cheese', price: 20, link: ['All'], group: 'Add-ons', rule: 'optional' }], 
             employees: [{internalId: 1, id: '001', name: 'Admin', sector: 'Administration', role: 'Owner'}], 
             orders: [], orderCounter: 100, adminPin: '1234', managerPin: '5678', activeCashier: 'Unassigned', isOnline: false, maxDeliveries: 0
         };
         
         if(state.isOnline === undefined) state.isOnline = false;
         if(state.maxDeliveries === undefined) state.maxDeliveries = 0;
+        
+        // Data Migration fix for older state versions to ensure toppings have groups
+        if(state.toppings && state.toppings.length > 0) {
+            state.toppings.forEach(t => { if(!t.group) t.group = 'Add-ons'; if(!t.rule) t.rule = 'optional'; });
+        }
+        
         localStorage.setItem('reatState1_0', JSON.stringify(state));
         
         let currentPosCategory = 'All';
@@ -708,10 +714,22 @@
             }
         }
 
+        function changeQty(d, isCust = false) { 
+            let el = document.getElementById('modalQty');
+            if(!el) return;
+            let c = parseInt(el.innerText); 
+            if(c+d>=1) { 
+                el.innerText = c+d; 
+                if(isCust) updateCustModalTotalPrice();
+                else updateModalTotalPrice(); 
+            } 
+        }
+
         // --- CUSTOMER HUB LOGIC ---
         let custCart = [];
         let custOrderMode = 'Takeaway';
         let custMenuData = { menu: [], cats: [], tops: [], storeName: "", maxDel: 0, activeDel: 0 };
+        let custToppingState = []; 
 
         function initCustomerNetwork() {
             peer = new Peer();
@@ -951,21 +969,122 @@
         }
 
         function openCustomerItemPopup(id) {
-            activePopupItem = custMenuData.menu.find(x => x.id === id); activeToppings = []; 
-            const applicableToppings = custMenuData.tops.filter(t => { let linkArr = Array.isArray(t.link) ? t.link : [t.link]; return linkArr.includes('All') || linkArr.includes(id.toString()) || linkArr.includes('cat-' + activePopupItem.category); });
-            const tops = applicableToppings.map(t => `<div class="topping-chip" onclick="toggleCartTopping(this, '${t.name}', ${t.price})">${t.name} (+₹${t.price})</div>`).join('');
+            activePopupItem = custMenuData.menu.find(x => x.id === id); 
+            custToppingState = []; 
             
-            let reqTag = activePopupItem.reqMod ? ' <span style="color:var(--accent); font-size:0.8rem; vertical-align:middle;">* Required</span>' : '';
-            
-            openModal(`<div class="modal-content"><div class="modal-main"><h2 style="color:var(--primary); margin-bottom:12px; margin-top:0;">${activePopupItem.name}</h2><div style="display:flex; justify-content:space-between; align-items:center; margin: 24px 0;"><span style="font-weight: 700;">Quantity</span><div class="qty-controls"><button class="qty-btn" onclick="changeQty(-1)">−</button><span id="modalQty" style="font-weight:800; font-size:1.3rem;">1</span><button class="qty-btn" onclick="changeQty(1)">+</button></div></div><textarea id="modalNote" placeholder="Special requests..."></textarea></div><div class="modal-sidebar"><h3 style="margin-top:0;">Add-ons${reqTag}</h3><div style="max-height: 250px; overflow-y:auto; margin-bottom: 20px;">${tops}</div><div style="margin-top: auto; display:flex; flex-direction:column; gap:10px;"><button class="submit-btn-large" id="modalTotalBtn" style="margin:0; padding:14px;" onclick="confirmCustomerItem()">ADD TO CART - ₹${activePopupItem.price}</button><button onclick="closeModal()" style="background:transparent; color:var(--accent); border:none; cursor:pointer; font-weight:700;">CANCEL</button></div></div></div>`);
+            const applicableToppings = custMenuData.tops.filter(t => { 
+                let linkArr = Array.isArray(t.link) ? t.link : [t.link]; 
+                return linkArr.includes('All') || linkArr.includes(id.toString()) || linkArr.includes('cat-' + activePopupItem.category); 
+            });
+
+            let groups = {};
+            applicableToppings.forEach(t => {
+                let g = t.group || 'Add-ons';
+                if(!groups[g]) groups[g] = { rule: t.rule || 'optional', items: [] };
+                groups[g].items.push(t);
+            });
+
+            let topsHtml = '';
+            Object.keys(groups).forEach(g => {
+                let ruleText = '';
+                if(groups[g].rule === 'required_one') ruleText = '<span style="color:var(--accent); font-size:0.75rem;">*Required (Choose Exactly 1)</span>';
+                else if(groups[g].rule === 'required_multi') ruleText = '<span style="color:var(--accent); font-size:0.75rem;">*Required (1 or more)</span>';
+                else ruleText = '<span style="color:var(--text-dim); font-size:0.75rem;">Optional</span>';
+
+                topsHtml += `<div style="margin-bottom:20px; background: rgba(255,255,255,0.02); padding: 14px; border-radius: 14px; border: 1px solid var(--border);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <h4 style="margin:0; font-size:1rem; color:var(--text-main);">${g}</h4>
+                        ${ruleText}
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:8px;">`;
+                
+                groups[g].items.forEach(t => {
+                    topsHtml += `<div class="topping-chip" id="custTop_${t.id}" onclick="toggleCustCartTopping(${t.id}, '${t.name.replace(/'/g, "\\'")}', ${t.price}, '${g.replace(/'/g, "\\'")}', '${groups[g].rule}')">${t.name} (+₹${t.price})</div>`;
+                });
+                topsHtml += `</div></div>`;
+            });
+
+            if(Object.keys(groups).length === 0) {
+                topsHtml = `<p style="color:var(--text-dim); font-size:0.85rem; font-style:italic;">No modifiers available.</p>`;
+            }
+
+            openModal(`<div class="modal-content"><div class="modal-main"><h2 style="color:var(--primary); margin-bottom:12px; margin-top:0;">${activePopupItem.name}</h2><div style="display:flex; justify-content:space-between; align-items:center; margin: 24px 0;"><span style="font-weight: 700;">Quantity</span><div class="qty-controls"><button class="qty-btn" onclick="changeQty(-1, true)">−</button><span id="modalQty" style="font-weight:800; font-size:1.3rem;">1</span><button class="qty-btn" onclick="changeQty(1, true)">+</button></div></div><textarea id="modalNote" placeholder="Special requests..."></textarea></div><div class="modal-sidebar"><h3 style="margin-top:0;">Customize</h3><div style="max-height: 350px; overflow-y:auto; margin-bottom: 20px; padding-right:8px;">${topsHtml}</div><div style="margin-top: auto; display:flex; flex-direction:column; gap:10px;"><button class="submit-btn-large" id="modalTotalBtn" style="margin:0; padding:14px;" onclick="confirmCustomerItem()">ADD TO CART - ₹${activePopupItem.price}</button><button onclick="closeModal()" style="background:transparent; color:var(--accent); border:none; cursor:pointer; font-weight:700;">CANCEL</button></div></div></div>`);
+        }
+
+        function toggleCustCartTopping(id, name, price, group, rule) {
+            let el = document.getElementById('custTop_' + id);
+            let existingIndex = custToppingState.findIndex(x => x.id === id);
+
+            if (rule === 'required_one') {
+                custToppingState.filter(x => x.group === group && x.id !== id).forEach(x => {
+                    let otherEl = document.getElementById('custTop_' + x.id);
+                    if(otherEl) otherEl.classList.remove('active');
+                });
+                custToppingState = custToppingState.filter(x => x.group !== group);
+                
+                if (existingIndex === -1) {
+                    custToppingState.push({id, name, price, group, rule});
+                    el.classList.add('active');
+                } else {
+                    el.classList.remove('active');
+                }
+            } else {
+                if (existingIndex > -1) {
+                    custToppingState.splice(existingIndex, 1);
+                    el.classList.remove('active');
+                } else {
+                    custToppingState.push({id, name, price, group, rule});
+                    el.classList.add('active');
+                }
+            }
+            updateCustModalTotalPrice();
+        }
+
+        function updateCustModalTotalPrice() { 
+            const qty = parseInt(document.getElementById('modalQty').innerText); 
+            const topsTotal = custToppingState.reduce((a, b) => a + b.price, 0);
+            const total = (activePopupItem.price + topsTotal) * qty; 
+            document.getElementById('modalTotalBtn').innerText = `ADD TO CART - ₹${total}`; 
         }
 
         function confirmCustomerItem() { 
-            if (activePopupItem.reqMod && activeToppings.length === 0) {
-                return alert("You must select at least one modifier to proceed.");
+            const applicableToppings = custMenuData.tops.filter(t => { 
+                let linkArr = Array.isArray(t.link) ? t.link : [t.link]; 
+                return linkArr.includes('All') || linkArr.includes(activePopupItem.id.toString()) || linkArr.includes('cat-' + activePopupItem.category); 
+            });
+
+            let groups = {};
+            applicableToppings.forEach(t => {
+                let g = t.group || 'Add-ons';
+                if(!groups[g]) groups[g] = t.rule || 'optional';
+            });
+
+            for (const [gName, rule] of Object.entries(groups)) {
+                let selectedCount = custToppingState.filter(x => x.group === gName).length;
+                if (rule === 'required_one' && selectedCount !== 1) {
+                    return alert(`Please select exactly 1 option for "${gName}".`);
+                }
+                if (rule === 'required_multi' && selectedCount < 1) {
+                    return alert(`Please select at least 1 option for "${gName}".`);
+                }
             }
-            const q = parseInt(document.getElementById('modalQty').innerText), n = document.getElementById('modalNote').value; custCart.push({ id: Date.now(), name: activePopupItem.name, qty:q, totalPrice:(activePopupItem.price+activeToppings.reduce((a,b)=>a+b.price,0))*q, totalCost:(activePopupItem.cost||0)*q, note:n, toppings:activeToppings.map(t=>t.name) }); closeModal(); updateCustCartUI(); 
+
+            const q = parseInt(document.getElementById('modalQty').innerText), n = document.getElementById('modalNote').value; 
+            let topsTotal = custToppingState.reduce((a,b)=>a+b.price,0);
+            
+            custCart.push({ 
+                id: Date.now(), 
+                name: activePopupItem.name, 
+                qty: q, 
+                totalPrice: (activePopupItem.price + topsTotal) * q, 
+                totalCost: (activePopupItem.cost||0) * q, 
+                note: n, 
+                toppings: custToppingState.map(t=>t.name) 
+            }); 
+            closeModal(); 
+            updateCustCartUI(); 
         }
+
         function removeCustCart(id) { custCart = custCart.filter(i => i.id !== id); updateCustCartUI(); }
         
         function updateCustCartUI() { 
@@ -1108,19 +1227,15 @@
         function openItemPopup(id) {
             activePopupItem = state.menuItems.find(x => x.id === id); activeToppings = []; 
             const applicableToppings = state.toppings.filter(t => { let linkArr = Array.isArray(t.link) ? t.link : [t.link]; return linkArr.includes('All') || linkArr.includes(id.toString()) || linkArr.includes('cat-' + activePopupItem.category); });
-            const tops = applicableToppings.map(t => `<div class="topping-chip" onclick="toggleCartTopping(this, '${t.name}', ${t.price})">${t.name} (+₹${t.price})</div>`).join('');
             
-            let reqTag = activePopupItem.reqMod ? '<span style="color:var(--accent); font-size:0.85rem; vertical-align:middle;">* Required Modifier</span>' : 'Modifiers';
-
-            openModal(`<div class="modal-content"><div class="modal-main"><h2 style="color:var(--primary); margin-bottom:12px; margin-top:0;">${activePopupItem.name}</h2><div style="display:flex; justify-content:space-between; align-items:center; margin: 24px 0;"><span style="font-weight: 700;">Quantity</span><div class="qty-controls"><button class="qty-btn" onclick="changeQty(-1)">−</button><span id="modalQty" style="font-weight:800; font-size:1.3rem;">1</span><button class="qty-btn" onclick="changeQty(1)">+</button></div></div><textarea id="modalNote" placeholder="Kitchen Directives..."></textarea></div><div class="modal-sidebar"><h3 style="margin-top:0;">${reqTag}</h3><div style="max-height: 250px; overflow-y:auto; margin-bottom: 20px;">${tops}</div><div style="margin-top: auto; display:flex; flex-direction:column; gap:10px;"><button class="submit-btn-large" id="modalTotalBtn" style="margin:0; padding:14px;" onclick="confirmItem()">ADD - ₹${activePopupItem.price}</button><button onclick="closeModal()" style="background:transparent; color:var(--accent); border:none; cursor:pointer; font-weight:700;">ABORT</button></div></div></div>`);
+            // Staff bypasses structured rules - rendered flat with visual context hints.
+            const tops = applicableToppings.map(t => `<div class="topping-chip" onclick="toggleCartTopping(this, '${t.name.replace(/'/g, "\\'")}', ${t.price})">${t.name} <small style="color:var(--text-dim);">(${t.group})</small> (+₹${t.price})</div>`).join('');
+            
+            openModal(`<div class="modal-content"><div class="modal-main"><h2 style="color:var(--primary); margin-bottom:12px; margin-top:0;">${activePopupItem.name}</h2><div style="display:flex; justify-content:space-between; align-items:center; margin: 24px 0;"><span style="font-weight: 700;">Quantity</span><div class="qty-controls"><button class="qty-btn" onclick="changeQty(-1, false)">−</button><span id="modalQty" style="font-weight:800; font-size:1.3rem;">1</span><button class="qty-btn" onclick="changeQty(1, false)">+</button></div></div><textarea id="modalNote" placeholder="Kitchen Directives..."></textarea></div><div class="modal-sidebar"><h3 style="margin-top:0;">Modifiers (Staff Override)</h3><div style="max-height: 250px; overflow-y:auto; margin-bottom: 20px;">${tops}</div><div style="margin-top: auto; display:flex; flex-direction:column; gap:10px;"><button class="submit-btn-large" id="modalTotalBtn" style="margin:0; padding:14px;" onclick="confirmItem()">ADD - ₹${activePopupItem.price}</button><button onclick="closeModal()" style="background:transparent; color:var(--accent); border:none; cursor:pointer; font-weight:700;">ABORT</button></div></div></div>`);
         }
-        function changeQty(d) { let c = parseInt(document.getElementById('modalQty').innerText); if(c+d>=1) { document.getElementById('modalQty').innerText = c+d; updateModalTotalPrice(); } }
         function toggleCartTopping(btn, name, price) { btn.classList.toggle('active'); if(btn.classList.contains('active')) activeToppings.push({name, price}); else activeToppings = activeToppings.filter(t => t.name !== name); updateModalTotalPrice(); }
         function updateModalTotalPrice() { const qty = parseInt(document.getElementById('modalQty').innerText); const total = (activePopupItem.price + activeToppings.reduce((a, b) => a + b.price, 0)) * qty; document.getElementById('modalTotalBtn').innerText = `ADD - ₹${total}`; }
         function confirmItem() { 
-            if (activePopupItem.reqMod && activeToppings.length === 0) {
-                return alert("You must select at least one modifier for this item.");
-            }
             const q = parseInt(document.getElementById('modalQty').innerText), n = document.getElementById('modalNote').value; currentCart.push({ id: Date.now(), name: activePopupItem.name, qty:q, totalPrice:(activePopupItem.price+activeToppings.reduce((a,b)=>a+b.price,0))*q, totalCost:(activePopupItem.cost||0)*q, note:n, toppings:activeToppings.map(t=>t.name) }); closeModal(); updateCartUI(); 
         }
         function removeFromCart(id) { currentCart = currentCart.filter(i => i.id !== id); updateCartUI(); }
@@ -1180,11 +1295,11 @@
 
         let editingMenuId = null;
         function openMenuModal(id = null) {
-            editingMenuId = id; let m = id ? state.menuItems.find(x => x.id === id) : {name:'', price:'', cost:'', category: state.categories[0]||'Mains', image:'', reqMod: false};
+            editingMenuId = id; let m = id ? state.menuItems.find(x => x.id === id) : {name:'', price:'', cost:'', category: state.categories[0]||'Mains', image:''};
             let catOptions = state.categories.map(c => `<option value="${c}" ${m.category===c?'selected':''}>${c}</option>`).join('');
-            openModal(`<div class="modal-content modal-mini"><h2>${id?'Edit Recipe':'New Recipe'}</h2><div style="display:flex; flex-direction:column; gap:15px; margin-top:15px;"><input type="text" id="modMenuName" value="${m.name}" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;" placeholder="Item Name"><input type="text" id="modMenuImage" value="${m.image || ''}" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;" placeholder="Food Logo (Emoji or Image URL)"><input type="number" id="modMenuPrice" value="${m.price}" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;" placeholder="Price (₹)"><input type="number" id="modMenuCost" value="${m.cost}" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;" placeholder="Cost (₹)"><select id="modMenuCat" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;">${catOptions}</select><label style="display:flex; align-items:center; gap:10px; font-size:0.95rem; color:var(--text-main); margin-top:5px; margin-bottom:5px;"><input type="checkbox" id="modMenuReqMod" ${m.reqMod ? 'checked' : ''} style="width:18px; height:18px; accent-color:var(--primary);"> Require at least 1 modifier</label><button class="submit-btn-large" style="margin-top:0;" onclick="saveMenuModal()">SAVE</button><button onclick="closeModal()" style="background:transparent; color:var(--accent); border:none; margin-top:10px;">CANCEL</button></div></div>`);
+            openModal(`<div class="modal-content modal-mini"><h2>${id?'Edit Recipe':'New Recipe'}</h2><div style="display:flex; flex-direction:column; gap:15px; margin-top:15px;"><input type="text" id="modMenuName" value="${m.name}" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;" placeholder="Item Name"><input type="text" id="modMenuImage" value="${m.image || ''}" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;" placeholder="Food Logo (Emoji or Image URL)"><input type="number" id="modMenuPrice" value="${m.price}" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;" placeholder="Price (₹)"><input type="number" id="modMenuCost" value="${m.cost}" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;" placeholder="Cost (₹)"><select id="modMenuCat" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;">${catOptions}</select><button class="submit-btn-large" style="margin-top:0;" onclick="saveMenuModal()">SAVE</button><button onclick="closeModal()" style="background:transparent; color:var(--accent); border:none; margin-top:10px;">CANCEL</button></div></div>`);
         }
-        function saveMenuModal() { let n = document.getElementById('modMenuName').value.trim(), img = document.getElementById('modMenuImage').value.trim() || '🍲', p = parseFloat(document.getElementById('modMenuPrice').value), c = parseFloat(document.getElementById('modMenuCost').value)||0, cat = document.getElementById('modMenuCat').value, reqMod = document.getElementById('modMenuReqMod').checked; if(!n || isNaN(p)) return alert("Name and Price required."); if(editingMenuId) { let m = state.menuItems.find(x => x.id === editingMenuId); if(m) { m.name = n; m.image = img; m.price = p; m.cost = c; m.category = cat; m.reqMod = reqMod; } } else { state.menuItems.push({id: Date.now(), name:n, image:img, price:p, cost:c, category:cat, reqMod: reqMod}); } broadcastState(); closeModal(); }
+        function saveMenuModal() { let n = document.getElementById('modMenuName').value.trim(), img = document.getElementById('modMenuImage').value.trim() || '🍲', p = parseFloat(document.getElementById('modMenuPrice').value), c = parseFloat(document.getElementById('modMenuCost').value)||0, cat = document.getElementById('modMenuCat').value; if(!n || isNaN(p)) return alert("Name and Price required."); if(editingMenuId) { let m = state.menuItems.find(x => x.id === editingMenuId); if(m) { m.name = n; m.image = img; m.price = p; m.cost = c; m.category = cat; } } else { state.menuItems.push({id: Date.now(), name:n, image:img, price:p, cost:c, category:cat}); } broadcastState(); closeModal(); }
 
         function addCategory() { let val = document.getElementById('newCatInput').value.trim(); if(val && !state.categories.includes(val)) { state.categories.push(val); document.getElementById('newCatInput').value = ''; broadcastState(); } }
         function deleteCategory(cat) { if(state.menuItems.some(m => m.category === cat)) return alert("Menu items are using this category."); state.categories = state.categories.filter(c => c !== cat); broadcastState(); }
@@ -1200,27 +1315,42 @@
         let editingToppingId = null; let editingToppingLinks = [];
         function openToppingModal(id = null) { 
             editingToppingId = id; 
-            let t = id ? state.toppings.find(x => x.id === id) : {name:'', price:0, link:['All']}; 
+            let t = id ? state.toppings.find(x => x.id === id) : {name:'', price:0, link:['All'], group: 'Add-ons', rule: 'optional'}; 
             editingToppingLinks = Array.isArray(t.link) ? [...t.link] : [t.link]; 
             renderToppingModalInternal(true); 
         }
         
         function renderToppingModalInternal(isFreshLoad = false) {
-            let tName = '';
-            let tPrice = 0;
+            let tName = '', tPrice = 0, tGroup = 'Add-ons', tRule = 'optional';
             
             if (isFreshLoad) {
-                tName = editingToppingId ? state.toppings.find(x=>x.id===editingToppingId).name : '';
-                tPrice = editingToppingId ? state.toppings.find(x=>x.id===editingToppingId).price : 0;
+                let existingTop = editingToppingId ? state.toppings.find(x=>x.id===editingToppingId) : null;
+                tName = existingTop ? existingTop.name : '';
+                tPrice = existingTop ? existingTop.price : 0;
+                tGroup = existingTop && existingTop.group ? existingTop.group : 'Add-ons';
+                tRule = existingTop && existingTop.rule ? existingTop.rule : 'optional';
             } else {
                 tName = document.getElementById('modTopName') ? document.getElementById('modTopName').value : '';
                 tPrice = document.getElementById('modTopPrice') ? document.getElementById('modTopPrice').value : 0;
+                tGroup = document.getElementById('modTopGroup') ? document.getElementById('modTopGroup').value : 'Add-ons';
+                tRule = document.getElementById('modTopRule') ? document.getElementById('modTopRule').value : 'optional';
             }
 
             let chips = `<div class="topping-chip ${editingToppingLinks.includes('All') ? 'active' : ''}" onclick="toggleTopLink('All')">Global</div>`;
             state.categories.forEach(c => { chips += `<div class="topping-chip ${editingToppingLinks.includes('cat-'+c) ? 'active' : ''}" onclick="toggleTopLink('cat-${c}')">Cat: ${c}</div>`; });
             state.menuItems.forEach(m => { chips += `<div class="topping-chip ${editingToppingLinks.includes(m.id.toString()) ? 'active' : ''}" onclick="toggleTopLink('${m.id}')">${m.name}</div>`; });
-            openModal(`<div class="modal-content modal-mini"><h2>${editingToppingId?'Edit Modifier':'New Modifier'}</h2><div style="display:flex; flex-direction:column; gap:15px; margin-top:15px;"><input type="text" id="modTopName" value="${tName}" placeholder="Name" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;"><input type="number" id="modTopPrice" value="${tPrice}" placeholder="Extra Price" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;"><div style="margin-top:10px; max-height:200px; overflow-y:auto; padding-bottom:10px; border:1px solid var(--border); padding:10px; border-radius:12px;">${chips}</div><button class="submit-btn-large" onclick="saveToppingModal()">SAVE</button><button onclick="closeModal()" style="background:transparent; color:var(--accent); border:none; margin-top:10px;">CANCEL</button></div></div>`);
+            
+            openModal(`<div class="modal-content modal-mini"><h2>${editingToppingId?'Edit Modifier':'New Modifier'}</h2><div style="display:flex; flex-direction:column; gap:15px; margin-top:15px;">
+                <input type="text" id="modTopName" value="${tName}" placeholder="Modifier Name (e.g. Extra Cheese)" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;">
+                <input type="number" id="modTopPrice" value="${tPrice}" placeholder="Extra Price (₹)" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;">
+                <input type="text" id="modTopGroup" value="${tGroup}" placeholder="Group Name (e.g. Spice Level)" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;">
+                <select id="modTopRule" style="background:var(--bg-deep); border:1px solid var(--border); padding:12px; border-radius:10px; color:white;">
+                    <option value="optional" ${tRule === 'optional' ? 'selected' : ''}>Customer Rule: Optional (0 or more)</option>
+                    <option value="required_one" ${tRule === 'required_one' ? 'selected' : ''}>Customer Rule: Required (Choose Exactly 1)</option>
+                    <option value="required_multi" ${tRule === 'required_multi' ? 'selected' : ''}>Customer Rule: Required (Choose 1 or more)</option>
+                </select>
+                <div style="margin-top:5px; max-height:200px; overflow-y:auto; padding-bottom:10px; border:1px solid var(--border); padding:10px; border-radius:12px;">${chips}</div>
+                <button class="submit-btn-large" onclick="saveToppingModal()">SAVE</button><button onclick="closeModal()" style="background:transparent; color:var(--accent); border:none; margin-top:10px;">CANCEL</button></div></div>`);
         }
         
         function toggleTopLink(val) { 
@@ -1238,7 +1368,23 @@
             renderToppingModalInternal(false); 
         }
         
-        function saveToppingModal() { let n = document.getElementById('modTopName').value.trim(), p = parseFloat(document.getElementById('modTopPrice').value); if(!n || isNaN(p)) return alert("Validation Failure."); if(editingToppingId) { let t = state.toppings.find(x => x.id === editingToppingId); if(t) { t.name = n; t.price = p; t.link = [...editingToppingLinks]; } } else { state.toppings.push({id: Date.now(), name:n, price:p, link:[...editingToppingLinks]}); } broadcastState(); closeModal(); }
+        function saveToppingModal() { 
+            let n = document.getElementById('modTopName').value.trim(), 
+                p = parseFloat(document.getElementById('modTopPrice').value),
+                g = document.getElementById('modTopGroup').value.trim() || 'Add-ons',
+                r = document.getElementById('modTopRule').value;
+            
+            if(!n || isNaN(p)) return alert("Validation Failure."); 
+            
+            if(editingToppingId) { 
+                let t = state.toppings.find(x => x.id === editingToppingId); 
+                if(t) { t.name = n; t.price = p; t.link = [...editingToppingLinks]; t.group = g; t.rule = r; } 
+            } else { 
+                state.toppings.push({id: Date.now(), name:n, price:p, link:[...editingToppingLinks], group: g, rule: r}); 
+            } 
+            broadcastState(); 
+            closeModal(); 
+        }
 
         function formatTime(timestamp) { if (!timestamp) return 'N/A'; return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
 
@@ -1246,7 +1392,7 @@
             let csvContent = "data:text/csv;charset=utf-8,Type,Data1,Data2,Data3,Data4,Data5,Data6\n";
             state.categories.forEach(c => { csvContent += `Category,${c.replace(/,/g, ' ')},,,,,\n`; });
             state.menuItems.forEach(m => { csvContent += `MenuItem,${m.id},${m.name.replace(/,/g, ' ')},${m.price},${m.cost},${m.category.replace(/,/g, ' ')},${m.image || '🍲'}\n`; });
-            state.toppings.forEach(t => { let linkStr = Array.isArray(t.link) ? t.link.join('|') : t.link; csvContent += `Topping,${t.id},${t.name.replace(/,/g, ' ')},${t.price},${linkStr},,\n`; });
+            state.toppings.forEach(t => { let linkStr = Array.isArray(t.link) ? t.link.join('|') : t.link; csvContent += `Topping,${t.id},${t.name.replace(/,/g, ' ')},${t.price},${linkStr},${t.group || 'Add-ons'},${t.rule || 'optional'}\n`; });
             state.employees.forEach(e => { csvContent += `Employee,${e.id},${e.name.replace(/,/g, ' ')},${e.sector},${e.role},\n`; });
             csvContent += `System_PINs,AdminPIN:${state.adminPin},ManagerPIN:${state.managerPin},,,,\n`;
             state.orders.forEach(o => { let safeTime = formatTime(o.timestamp).replace(/,/g, ''); csvContent += `Order,${o.internalId || o.id},Total:${o.total},Cost:${o.totalCost || 0},Cashier:${o.cashier},${safeTime}\n`; });
@@ -1262,7 +1408,12 @@
                     const cols = line.split(','); const type = cols[0] ? cols[0].trim() : ''; 
                     if (type === 'Category') { const cat = cols[1] ? cols[1].trim() : ''; if (cat && !state.categories.includes(cat)) { state.categories.push(cat); } }
                     else if (type === 'MenuItem') { const id = parseInt(cols[1]) || Date.now() + Math.random(), name = cols[2] ? cols[2].trim() : '', price = parseFloat(cols[3]) || 0, cost = parseFloat(cols[4]) || 0, cat = cols[5] ? cols[5].trim() : 'Mains', img = cols[6] ? cols[6].trim() : '🍲'; if (!state.menuItems.find(m => m.name.toLowerCase() === name.toLowerCase()) && name) { state.menuItems.push({ id, name, price, cost, category: cat, image: img }); if(!state.categories.includes(cat)) { state.categories.push(cat); } } }
-                    else if (type === 'Topping') { const id = parseInt(cols[1]) || Date.now() + Math.random(), name = cols[2] ? cols[2].trim() : '', price = parseFloat(cols[3]) || 0, linkStr = cols[4] ? cols[4].trim() : 'All', linkArr = linkStr.split('|').filter(Boolean); if (!state.toppings.find(t => t.name.toLowerCase() === name.toLowerCase()) && name) { state.toppings.push({ id, name, price, link: linkArr.length ? linkArr : ['All'] }); } }
+                    else if (type === 'Topping') { 
+                        const id = parseInt(cols[1]) || Date.now() + Math.random(), name = cols[2] ? cols[2].trim() : '', price = parseFloat(cols[3]) || 0, linkStr = cols[4] ? cols[4].trim() : 'All', linkArr = linkStr.split('|').filter(Boolean); 
+                        const groupName = cols[5] ? cols[5].trim() : 'Add-ons';
+                        const ruleType = cols[6] ? cols[6].trim() : 'optional';
+                        if (!state.toppings.find(t => t.name.toLowerCase() === name.toLowerCase()) && name) { state.toppings.push({ id, name, price, link: linkArr.length ? linkArr : ['All'], group: groupName, rule: ruleType }); } 
+                    }
                     else if (type === 'Employee') { const id = cols[1] ? cols[1].trim() : '', name = cols[2] ? cols[2].trim() : '', sector = cols[3] ? cols[3].trim() : '', role = cols[4] ? cols[4].trim() : ''; if (!state.employees.find(e => e.id === id) && name && id) { state.employees.push({ internalId: Date.now() + Math.random(), id, name, sector, role }); } }
                     else if (type === 'System_PINs') { const ap = cols[1] ? cols[1].replace('AdminPIN:','').trim() : '', mp = cols[2] ? cols[2].replace('ManagerPIN:','').trim() : ''; if (ap && ap.length >= 4) { state.adminPin = ap; } if (mp && mp.length >= 4) { state.managerPin = mp; } }
                 }); broadcastState(); alert("Data Restoration Complete."); event.target.value = '';
@@ -1346,8 +1497,14 @@
             // Standard UI Repopulation
             document.getElementById('nextOrderNumber').innerText = `Staged: #${state.orderCounter + 1}`;
             document.getElementById('catAdminList').innerHTML = state.categories.map(c => `<span style="background:var(--bg-card); border:1px solid var(--border); padding:8px 16px; border-radius:24px; font-size:0.85rem; display:flex; align-items:center; gap:8px;">${c} <button onclick="deleteCategory('${c}')" style="background:none; border:none; color:var(--accent); cursor:pointer; font-weight:bold;">×</button></span>`).join('');
-            document.getElementById('menuAdminBody').innerHTML = state.menuItems.map(m => `<tr><td><b>${m.name}</b> ${m.reqMod ? '<span style="color:var(--accent); font-size:0.75rem;">(*Req)</span>' : ''}</td><td><span style="color:var(--primary); font-size:0.8rem; font-weight:700;">${m.category}</span></td><td>₹${m.price}</td><td>₹${m.cost}</td><td><button class="btn-edit" onclick="openMenuModal(${m.id})">Edit</button><button class="btn-delete" onclick="state.menuItems=state.menuItems.filter(x=>x.id!==${m.id}); broadcastState();">Del</button></td></tr>`).join('');
-            document.getElementById('toppingsAdminBody').innerHTML = state.toppings.map(t => { let linkName = ''; let linksArray = Array.isArray(t.link) ? t.link : [t.link]; if (linksArray.includes('All')) { linkName = 'Global'; } else { linkName = linksArray.length + ' Links'; } return `<tr><td><b>${t.name}</b></td><td><span style="color:var(--text-dim); font-size:0.85rem;">${linkName}</span></td><td>₹${t.price}</td><td><button class="btn-edit" onclick="openToppingModal(${t.id})">Edit</button><button class="btn-delete" onclick="state.toppings=state.toppings.filter(x=>x.id!==${t.id}); broadcastState();">Del</button></td></tr>`; }).join('');
+            document.getElementById('menuAdminBody').innerHTML = state.menuItems.map(m => `<tr><td><b>${m.name}</b></td><td><span style="color:var(--primary); font-size:0.8rem; font-weight:700;">${m.category}</span></td><td>₹${m.price}</td><td>₹${m.cost}</td><td><button class="btn-edit" onclick="openMenuModal(${m.id})">Edit</button><button class="btn-delete" onclick="state.menuItems=state.menuItems.filter(x=>x.id!==${m.id}); broadcastState();">Del</button></td></tr>`).join('');
+            
+            document.getElementById('toppingsAdminBody').innerHTML = state.toppings.map(t => { 
+                let linkName = Array.isArray(t.link) ? (t.link.includes('All') ? 'Global' : t.link.length + ' Links') : 'Global'; 
+                let groupBadge = `<span style="background:var(--bg-deep); padding:4px 8px; border-radius:8px; font-size:0.75rem; border:1px solid var(--border);">${t.group || 'Add-ons'}</span>`;
+                return `<tr><td><b>${t.name}</b><br><div style="margin-top:6px;">${groupBadge}</div></td><td><span style="color:var(--text-dim); font-size:0.85rem;">${linkName}</span></td><td>₹${t.price}</td><td><button class="btn-edit" onclick="openToppingModal(${t.id})">Edit</button><button class="btn-delete" onclick="state.toppings=state.toppings.filter(x=>x.id!==${t.id}); broadcastState();">Del</button></td></tr>`; 
+            }).join('');
+            
             document.getElementById('employeeTableBody').innerHTML = state.employees.map(e => `<tr><td>${e.id}</td><td><b>${e.name}</b></td><td><span style="color:var(--text-dim); font-weight:600;">${e.role}</span> <small>(${e.sector})</small></td><td><button class="btn-edit" onclick="openEmployeeModal(${e.internalId})">Edit</button><button class="btn-delete" onclick="state.employees=state.employees.filter(x=>x.internalId!==${e.internalId}); broadcastState();">Del</button></td></tr>`).join('');
             
             let filterHtml = `<button class="tab-btn ${currentPosCategory==='All'?'active':''}" onclick="setPosCategory('All')" style="padding:6px 14px; font-size:0.8rem; border:1px solid var(--border); border-radius:10px;">All Content</button>`;
