@@ -29,7 +29,7 @@
 
         /* --- CUSTOMER HUB STYLES --- */
         #customer-hub { align-items: center; padding: 40px 20px; background: radial-gradient(circle at top, rgba(255,107,0,0.15) 0%, var(--bg-deep) 60%); text-align: center; }
-        .hub-search-box { background: var(--bg-surface); padding: 40px; border-radius: 24px; border: 1px solid var(--border); max-width: 600px; width: 100%; margin-top: 40px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+        .hub-search-box { background: var(--bg-surface); padding: 40px; border-radius: 24px; border: 1px solid var(--border); max-width: 600px; width: 100%; margin-top: 40px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); position: relative;}
         .directory-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; }
         .store-card { background: var(--bg-card); border: 1px solid var(--border); padding: 20px; border-radius: 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px; }
         .store-card:hover { border-color: var(--primary); transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.2); background: rgba(255,107,0,0.05); }
@@ -198,6 +198,8 @@
 
             <div class="directory-grid" id="storeDirectoryGrid"><div style="grid-column: 1/-1; padding: 30px;"><div class="scanner-text">Detecting active networks...</div></div></div>
             <p id="hubStatusText" style="color:var(--warning); margin-top: 25px; font-weight:600; display:none;"></p>
+            
+            <button onclick="scanForOnlineStores()" style="position:absolute; top:35px; right:35px; background:transparent; border:none; color:var(--primary); cursor:pointer; font-weight:bold; font-size:1.2rem;" title="Refresh Scanner">⟳</button>
         </div>
         
         <div style="margin-top:auto; margin-bottom: 20px; display:flex; flex-direction:column; gap:14px; align-items:center;">
@@ -482,7 +484,6 @@
         if(state.isOnline === undefined) state.isOnline = false;
         if(state.maxDeliveries === undefined) state.maxDeliveries = 0;
         
-        // Data Migration fix for older state versions to ensure toppings have groups
         if(state.toppings && state.toppings.length > 0) {
             state.toppings.forEach(t => { if(!t.group) t.group = 'Add-ons'; if(!t.rule) t.rule = 'optional'; });
         }
@@ -503,6 +504,19 @@
         let connectedSideTerminals = [];
         let connectedCustomers = []; 
         let mainConnection = null;    
+
+        // --- NEW: AUTO-OFFLINE ON APP CLOSE/HIDE ---
+        function performAutoOffline() {
+            if (isStoreRoute && isMainTerminal && state.isOnline) {
+                state.isOnline = false;
+                localStorage.setItem('reatState1_0', JSON.stringify(state));
+                connectedCustomers.forEach(conn => {
+                    try { conn.send({ type: 'ERROR', message: 'Restaurant closed.' }); } catch(e){}
+                });
+            }
+        }
+        window.addEventListener('beforeunload', performAutoOffline);
+        window.addEventListener('pagehide', performAutoOffline);
 
         function initStoreNetwork() {
             if(staffSyncPeer) { try { staffSyncPeer.destroy(); } catch(e){} }
@@ -558,18 +572,21 @@
             publicCustomerPeer = new Peer(publicStoreId);
             
             publicCustomerPeer.on('connection', (conn) => { 
-                if(!state.isOnline) {
-                    conn.on('open', () => { try { conn.send({ type: 'ERROR', message: 'Restaurant is currently offline.'}); }catch(e){} setTimeout(()=>conn.close(), 500); });
-                    return;
-                }
                 connectedCustomers.push(conn);
-                conn.on('open', () => { 
-                    let public_orders = state.orders.map(o => ({ id: o.id, status: o.status }));
-                    let activeDelCount = state.orders.filter(o => o.orderType === 'Delivery' && o.status !== 'Collected' && o.status !== 'Cancelled').length;
-                    try { conn.send({ type: 'SYNC_MENU', payload: { menu: state.menuItems, cats: state.categories, tops: state.toppings, storeName: state.storeName, maxDel: state.maxDeliveries || 0, activeDel: activeDelCount }, public_orders: public_orders }); } catch(e){}
-                });
+                
+                // NEW: Wait for explicit PING/MENU_REQUEST from the customer. Eliminates the data loss race condition.
                 conn.on('data', (data) => {
-                    if (data.type === 'NEW_ORDER') {
+                    if(data.type === 'MENU_REQUEST') {
+                        if(!state.isOnline) {
+                            try { conn.send({ type: 'ERROR', message: 'Restaurant is currently offline.'}); } catch(e){}
+                            setTimeout(()=>conn.close(), 500);
+                            return;
+                        }
+                        let public_orders = state.orders.map(o => ({ id: o.id, status: o.status }));
+                        let activeDelCount = state.orders.filter(o => o.orderType === 'Delivery' && o.status !== 'Collected' && o.status !== 'Cancelled').length;
+                        try { conn.send({ type: 'SYNC_MENU', payload: { menu: state.menuItems, cats: state.categories, tops: state.toppings, storeName: state.storeName, maxDel: state.maxDeliveries || 0, activeDel: activeDelCount }, public_orders: public_orders }); } catch(e){}
+                    }
+                    else if (data.type === 'NEW_ORDER') {
                         state.orderCounter++;
                         data.order.id = 'C' + state.orderCounter;
                         data.order.internalId = Date.now();
@@ -579,6 +596,7 @@
                         alert(`🔔 New ${data.order.orderType} Order Received! (ID: #${data.order.id})`);
                     }
                 });
+                
                 conn.on('close', () => {
                     connectedCustomers = connectedCustomers.filter(c => c !== conn);
                 });
@@ -769,6 +787,11 @@
                     if(!isDone) { isDone = true; pingConn.close(); checkDone(); } 
                 }, 3000);
 
+                // NEW: Request Menu Data manually once socket opens
+                pingConn.on('open', () => {
+                    pingConn.send({ type: 'MENU_REQUEST' });
+                });
+
                 pingConn.on('data', (data) => {
                     if(isDone) return;
                     if(data.type === 'SYNC_MENU') {
@@ -804,7 +827,11 @@
             statusEl.style.display = 'block'; statusEl.style.color = 'var(--text-main)'; statusEl.innerText = "Connecting to Restaurant...";
             activeConnection = peer.connect(targetPeerId);
             
-            activeConnection.on('open', () => { statusEl.innerText = "Connection Established. Fetching Menu..."; statusEl.style.color = 'var(--success)'; });
+            activeConnection.on('open', () => { 
+                statusEl.innerText = "Connection Established. Fetching Menu..."; 
+                statusEl.style.color = 'var(--success)'; 
+                activeConnection.send({ type: 'MENU_REQUEST' }); // NEW: Securely request
+            });
             activeConnection.on('data', (data) => {
                 if(data.type === 'ERROR') { statusEl.innerText = data.message; statusEl.style.color = 'var(--accent)'; activeConnection.close(); }
                 if(data.type === 'SYNC_MENU') {
@@ -1228,7 +1255,6 @@
             activePopupItem = state.menuItems.find(x => x.id === id); activeToppings = []; 
             const applicableToppings = state.toppings.filter(t => { let linkArr = Array.isArray(t.link) ? t.link : [t.link]; return linkArr.includes('All') || linkArr.includes(id.toString()) || linkArr.includes('cat-' + activePopupItem.category); });
             
-            // Staff bypasses structured rules - rendered flat with visual context hints.
             const tops = applicableToppings.map(t => `<div class="topping-chip" onclick="toggleCartTopping(this, '${t.name.replace(/'/g, "\\'")}', ${t.price})">${t.name} <small style="color:var(--text-dim);">(${t.group})</small> (+₹${t.price})</div>`).join('');
             
             openModal(`<div class="modal-content"><div class="modal-main"><h2 style="color:var(--primary); margin-bottom:12px; margin-top:0;">${activePopupItem.name}</h2><div style="display:flex; justify-content:space-between; align-items:center; margin: 24px 0;"><span style="font-weight: 700;">Quantity</span><div class="qty-controls"><button class="qty-btn" onclick="changeQty(-1, false)">−</button><span id="modalQty" style="font-weight:800; font-size:1.3rem;">1</span><button class="qty-btn" onclick="changeQty(1, false)">+</button></div></div><textarea id="modalNote" placeholder="Kitchen Directives..."></textarea></div><div class="modal-sidebar"><h3 style="margin-top:0;">Modifiers (Staff Override)</h3><div style="max-height: 250px; overflow-y:auto; margin-bottom: 20px;">${tops}</div><div style="margin-top: auto; display:flex; flex-direction:column; gap:10px;"><button class="submit-btn-large" id="modalTotalBtn" style="margin:0; padding:14px;" onclick="confirmItem()">ADD - ₹${activePopupItem.price}</button><button onclick="closeModal()" style="background:transparent; color:var(--accent); border:none; cursor:pointer; font-weight:700;">ABORT</button></div></div></div>`);
