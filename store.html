@@ -509,14 +509,31 @@
         function performAutoOffline() {
             if (isStoreRoute && isMainTerminal && state.isOnline) {
                 state.isOnline = false;
+                
+                let sw = document.getElementById('storeOnlineSwitch');
+                if (sw) sw.checked = false;
+
                 localStorage.setItem('reatState1_0', JSON.stringify(state));
-                connectedCustomers.forEach(conn => {
-                    try { conn.send({ type: 'ERROR', message: 'Restaurant closed.' }); } catch(e){}
-                });
+                
+                if (connectedCustomers && connectedCustomers.length > 0) {
+                    connectedCustomers.forEach(conn => {
+                        try { conn.send({ type: 'ERROR', message: 'Restaurant closed.' }); } catch(e){}
+                    });
+                }
+                
+                if (publicCustomerPeer) {
+                    try { publicCustomerPeer.destroy(); } catch(e) {}
+                    publicCustomerPeer = null;
+                }
             }
         }
+        
         window.addEventListener('beforeunload', performAutoOffline);
         window.addEventListener('pagehide', performAutoOffline);
+        window.addEventListener('unload', performAutoOffline);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') performAutoOffline();
+        });
 
         function initStoreNetwork() {
             if(staffSyncPeer) { try { staffSyncPeer.destroy(); } catch(e){} }
