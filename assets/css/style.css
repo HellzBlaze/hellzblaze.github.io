@@ -1,0 +1,91 @@
+:root {
+    --primary: #ff4757;
+    --bg: #f8f9fa;
+    --card: #ffffff;
+    --text: #2f3542;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 0;
+}
+
+.app-header {
+    background: var(--card);
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+}
+
+.menu-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.card {
+    background: var(--card);
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.categories-nav {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.categories-nav button {
+    padding: 0.5rem 1rem;
+    border: none;
+    background: #e4e6eb;
+    border-radius: 20px;
+    cursor: pointer;
+}
+
+.categories-nav button.active {
+    background: var(--primary);
+    color: white;
+}
+
+.cart-container, .tracker-container {
+    background: var(--card);
+    padding: 1.5rem;
+    border-radius: 8px;
+    height: fit-content;
+}
+
+.hidden { display: none !important; }
+.btn-primary {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    width: 100%;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+.status-badge {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: #ffa500;
+    color: white;
+    border-radius: 12px;
+    font-weight: bold;
+}
