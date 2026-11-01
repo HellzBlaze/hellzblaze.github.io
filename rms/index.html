@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REat - Staff Dashboard</title>
+    <link rel="stylesheet" href="./assets/css/rms.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- AUTH SCREEN -->
+    <div id="authScreen" class="auth-container">
+        <div class="auth-card">
+            <h2>REat Staff Portal</h2>
+            <form id="authForm">
+                <input type="email" id="authEmail" placeholder="Email" required>
+                <input type="password" id="authPassword" placeholder="Password" required>
+                <input type="text" id="authRestName" placeholder="Restaurant Name (Signup Only)">
+                <div class="auth-buttons">
+                    <button type="submit" id="btnLogin">Login</button>
+                    <button type="button" id="btnSignup">Sign Up</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN RMS DASHBOARD -->
+    <div id="dashboardScreen" class="dashboard-container hidden">
+        <aside class="sidebar">
+            <h2 id="storeNameHeader">REat Dashboard</h2>
+            <nav>
+                <button onclick="switchTab('pos')" class="nav-btn active">POS Register</button>
+                <button onclick="switchTab('oms')" class="nav-btn">Kitchen (OMS)</button>
+                <button onclick="switchTab('analytics')" class="nav-btn">Analytics</button>
+                <button onclick="switchTab('vault')" class="nav-btn">System Vault</button>
+            </nav>
+            <button id="btnLogout" class="btn-logout">Logout</button>
+        </aside>
+
+        <main class="content-area">
+            <!-- POS TAB -->
+            <section id="tab-pos" class="tab-content">
+                <h2>Point of Sale Register</h2>
+                <div class="pos-layout">
+                    <div id="posMenuGrid" class="pos-grid"></div>
+                    <div class="pos-ticket">
+                        <h3>Current Ticket</h3>
+                        <div id="ticketItems"></div>
+                        <div class="ticket-summary">
+                            <p>Total: $<span id="posTotal">0.00</span></p>
+                            <button id="btnDispatchTicket" class="btn-primary">Dispatch Ticket</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- OMS KANBAN TAB -->
+            <section id="tab-oms" class="tab-content hidden">
+                <h2>Kitchen Order Management</h2>
+                <div class="kanban-board">
+                    <div class="kanban-col" id="col-Pending"><h3>Pending</h3><div class="cards"></div></div>
+                    <div class="kanban-col" id="col-Preparing"><h3>Preparing</h3><div class="cards"></div></div>
+                    <div class="kanban-col" id="col-Ready"><h3>Ready</h3><div class="cards"></div></div>
+                    <div class="kanban-col" id="col-Completed"><h3>Completed</h3><div class="cards"></div></div>
+                </div>
+            </section>
+
+            <!-- ANALYTICS TAB -->
+            <section id="tab-analytics" class="tab-content hidden">
+                <h2>Store Performance</h2>
+                <div class="metrics-grid">
+                    <div class="metric-card"><h3>Gross Revenue</h3><p id="metricRevenue">$0.00</p></div>
+                    <div class="metric-card"><h3>Total Tickets</h3><p id="metricTickets">0</p></div>
+                </div>
+            </section>
+
+            <!-- VAULT TAB -->
+            <section id="tab-vault" class="tab-content hidden">
+                <h2>System Control Vault</h2>
+                <div class="vault-controls">
+                    <label>Online Ordering Status: 
+                        <input type="checkbox" id="storeStatusToggle">
+                    </label>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="./assets/js/rms.js"></script>
+</body>
+</html>
